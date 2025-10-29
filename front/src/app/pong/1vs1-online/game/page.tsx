@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { io } from "socket.io-client";
+import { useGameData } from "@/util/useGameData";
 
-const ConfigScreen = dynamic(() => import('../Config/page'), { ssr: false });
+const ConfigScreen = dynamic(() => import("../Config/page"), { ssr: false });
 
 const styles = {
   container: {
@@ -163,6 +163,8 @@ const PongGame = () => {
   const PADDLE_HEIGHT = 100;
   const BALL_SIZE = 20;
 
+  const gameData = useGameData(); // Use gameData.gamedata
+
   const animationFrameRef = useRef();
   const keysPressed = useRef({
     w: false,
@@ -181,6 +183,8 @@ const PongGame = () => {
       });
     }
   }, [gameConfig]);
+
+  useEffect(() => {}, [gameData.gamedata]); // @Baptiste Here
 
   useEffect(() => {
     const handleKeyDown = (e) => {

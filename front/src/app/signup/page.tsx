@@ -182,9 +182,6 @@ const SignupPage = () => {
     setError("");
     setSuccess("Compte créé avec succès! Redirection...");
 
-    const userData = { username, email, password };
-    localStorage.setItem("userData", JSON.stringify(userData));
-
     setTimeout(() => {
       router.push("/login");
     }, 2000);

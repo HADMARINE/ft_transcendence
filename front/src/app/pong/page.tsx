@@ -198,6 +198,7 @@ export default function PongModesPage() {
   const gameData = useGameData();
 
   useEffect(() => {
+    gameData.assureConnection();
     if (!showMatchmakingPopup) {
       gameData.unregisterQueue();
       return;
@@ -207,7 +208,7 @@ export default function PongModesPage() {
 
   useEffect(() => {
     if (gameData.status === IngameStatus.WAITING_FOR_PLAYERS) {
-      router.replace("/1vs1-online/lobby");
+      router.replace("/pong/1vs1-online/lobby");
     }
   }, [gameData.status]);
 

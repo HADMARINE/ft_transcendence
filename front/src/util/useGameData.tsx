@@ -46,6 +46,7 @@ type GameDataContextValue = {
   ingameData: GameData | null;
   gamedata: unknown | null;
   readyUsers: string[];
+  isUserReady: boolean;
   client: Socket | null;
   status: IngameStatus | null;
   winner: string | null;
@@ -100,6 +101,7 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [gamedata, setGamedata] = useState<unknown | null>(null);
   const [readyUsers, setReadyUsers] = useState<string[]>([]);
   const [winner, setWinner] = useState<string | null>(null);
+  const [isUserReady, setIsUserReady] = useState<boolean>(false);
 
   useEffect(() => {
     if (ingameData && ingameData.status !== status) {
@@ -121,7 +123,7 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
     clientRef.current = client;
 
-    client.connect();
+    if (localStorage.getItem("token")) client.connect();
 
     client.on("connect", () => {
       console.log("Connected to server");
@@ -134,7 +136,7 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     client.on("game-session", (data: GameData) => {
-      setIngameData(data);
+      setIngameData({ ...ingameData, ...data });
     });
 
     client.on("register-queue", (data: RegisterQueueStatus) => {
@@ -143,7 +145,7 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     client.on("ingame-comm", (data: GameData) => {
-      setIngameData(data);
+      setIngameData({ ...ingameData, ...data });
     });
 
     client.on("gamedata", (data: unknown) => {
@@ -204,11 +206,17 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const readyUser = () => {
-    if (clientRef.current) clientRef.current.emit("ready-user");
+    if (clientRef.current) {
+      clientRef.current.emit("ready-user");
+      setIsUserReady(true);
+    }
   };
 
   const cancelReadyUser = () => {
-    if (clientRef.current) clientRef.current.emit("cancel-ready-user");
+    if (clientRef.current) {
+      clientRef.current.emit("cancel-ready-user");
+      setIsUserReady(false);
+    }
   };
 
   const gameConfig = (config: { color: string; map: string }) => {
@@ -229,7 +237,13 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const assureConnection = () => {
     if (!isConnected) {
-      if (clientRef.current) clientRef.current.connect();
+      if (clientRef.current) {
+        clientRef.current.auth = {
+          ...clientRef.current.auth,
+          token: localStorage.getItem("token"),
+        };
+        clientRef.current.connect();
+      }
     }
   };
 
@@ -242,6 +256,7 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     client: clientRef.current,
     status,
     winner,
+    isUserReady,
     sendGamedata,
     registerQueue,
     unregisterQueue,

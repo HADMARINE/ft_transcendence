@@ -79,6 +79,7 @@ export class GameSessionService {
         ) {
           // TODO : reestablish user session, send info to client
           client.emit('game-session', this.omitSensitives(activeGameSession));
+          await client.join(activeGameSession.id);
           return;
         }
       }

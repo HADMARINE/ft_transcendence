@@ -14,10 +14,15 @@ import { RequestWithUser } from './interfaces/request-with-user.interface';
 import { FastifyReply } from 'fastify';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { Roles } from 'src/decorators/roles.decorator';
+import ms from 'ms';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @HttpCode(HttpStatus.OK)
   @UseGuards(LocalAuthGuard)
@@ -38,8 +43,15 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('logout')
-  logout(@Res() res: FastifyReply) {
-    res.clearCookie('Authorization');
+  logout(@Res({ passthrough: true }) res: FastifyReply) {
+    res.clearCookie('Authorization', {
+      // httpOnly: true,
+      // path: '/',
+      // maxAge: parseInt(
+      //   ms(this.configService.getOrThrow('ACCESS_TOKEN_EXPIRATION_TIME')),
+      // ),
+    });
+    return 'Hello';
   }
 
   @Get('verify/token')

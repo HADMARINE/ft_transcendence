@@ -6,6 +6,7 @@ export async function login(params: {
 }): Promise<{ result: boolean; data: string }> {
   const response = await client.post<string>("/auth/login", params);
   if (response.result === true) {
+    localStorage.setItem("token", response.data);
     return {
       result: true,
       data: response.data as string,
