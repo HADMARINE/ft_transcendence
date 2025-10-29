@@ -98,11 +98,11 @@ export class GameSessionService {
   handleDisconnect(client: Socket) {
     const user = client.handshake.auth.user as User;
 
-    this.logger.debug(`User disconnected : ${user.id} - ${user.email}`);
+    this.logger.debug(`User disconnected : ${user?.id} - ${user?.email}`);
 
     // Unregister the user if they disconnect
     const index = this.userQueue.findIndex(
-      (userQueue) => userQueue.user.id === user.id,
+      (userQueue) => userQueue.user?.id === user?.id,
     );
 
     if (index !== -1) {
@@ -152,15 +152,6 @@ export class GameSessionService {
     userQueue: [UserQueue, ...UserQueue[]],
     gametype: GametypeEnum,
   ) {
-    for (const userQueueItem of userQueue) {
-      this.userQueue.splice(
-        this.userQueue.findIndex(
-          (value) => value.user.id === userQueueItem.user.id,
-        ),
-        1,
-      );
-    }
-
     console.log(this.userQueue);
 
     const launchGame = () => {
@@ -168,12 +159,28 @@ export class GameSessionService {
         this.logger.debug(
           `Game : ${gametype} - Creating room for PONG players: ${userQueue.length}`,
         );
-        this.handleGame(userQueue); // TODO : How to handle promise?
+        for (const userQueueItem of userQueue) {
+          this.userQueue.splice(
+            this.userQueue.findIndex(
+              (value) => value.user.id === userQueueItem.user.id,
+            ),
+            1,
+          );
+        }
+        this.handleGame(gametype, userQueue); // TODO : How to handle promise?
       } else {
         this.logger.debug(
           `Game : ${gametype} - Creating room for SHOOT players: ${userQueue.length}`,
         );
-        this.handleGame(userQueue); // TODO : How to handle promise?
+        for (const userQueueItem of userQueue) {
+          this.userQueue.splice(
+            this.userQueue.findIndex(
+              (value) => value.user.id === userQueueItem.user.id,
+            ),
+            1,
+          );
+        }
+        this.handleGame(gametype, userQueue); // TODO : How to handle promise?
       }
     };
     // TODO : Test this
@@ -273,14 +280,14 @@ export class GameSessionService {
   }
 
   // TODO : handle game
-  async handleGame(usersList: UserQueue[]) {
+  async handleGame(gametype: GametypeEnum, usersList: UserQueue[]) {
     const roomId = uuidv4();
 
     const room = this.server.of('/').in(roomId);
 
     const activeGameSession: ActiveGameSession<unknown> = {
       id: roomId,
-      gametype: GametypeEnum.PONG,
+      gametype: gametype,
       status: IngameStatus.WAITING_FOR_PLAYERS,
       players: usersList,
       createdAt: Date.now(),
@@ -565,7 +572,7 @@ export class GameSessionService {
     }
   }
 
-  async gamedataWinner(client: Socket, data: GamedataWinnerDto) {
+  async gamedataWinner(client: Socket, data: string) {
     const user = client.handshake.auth.user as User;
     const activeGameSession = this.getActiveGameSessionByUserId<
       PongData | ShootData
@@ -578,14 +585,14 @@ export class GameSessionService {
     if (
       !activeGameSession.players
         .map((userQueue) => userQueue.user.id)
-        .includes(data.winner)
+        .includes(data)
     ) {
       throw new AccessNotGrantedException();
     }
 
     activeGameSession.winners.push(
       activeGameSession.players.find(
-        (userQueue) => userQueue.user.id === data.winner,
+        (userQueue) => userQueue.user.id === data,
       ) as UserQueue,
     );
 
@@ -599,7 +606,7 @@ export class GameSessionService {
         activeGameSession.data.player1.user.id,
         activeGameSession.data.player2.user.id,
       ],
-      winner: data.winner,
+      winner: data,
     });
 
     activeGameSession.status = IngameStatus.INTERMISSION;

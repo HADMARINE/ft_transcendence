@@ -1,6 +1,6 @@
 "use client";
 
-import { authStatus, verifyToken } from "@/api/auth";
+import { authStatus } from "@/api/auth";
 import { usePathname, useRouter } from "next/navigation";
 import React from "react";
 
