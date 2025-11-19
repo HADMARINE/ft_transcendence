@@ -157,7 +157,9 @@ const LoginPage = (props: { redirect?: string }) => {
       return;
     }
 
-    localStorage.setItem("token", result.data);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("token", result.data);
+    }
 
     console.log("Connexion réussie avec:", { email, password });
     setError("");
@@ -260,7 +262,7 @@ const LoginPage = (props: { redirect?: string }) => {
           }
         }
         @keyframes move6 {
-          100% {
+          100() {
             transform: translate(100px, 70px);
           }
         }

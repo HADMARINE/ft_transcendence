@@ -92,6 +92,7 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const clientRef = useRef<Socket | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   const [isConnected, setIsConnected] = useState(false);
   const [registerQueueStatus, setRegisterQueueStatus] =
@@ -104,26 +105,35 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isUserReady, setIsUserReady] = useState<boolean>(false);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (ingameData && ingameData.status !== status) {
       setStatus(ingameData.status);
     }
   }, [ingameData, status]);
 
   useEffect(() => {
+    // Ne s'exécute que côté client
+    if (typeof window === 'undefined') return;
+
+    const token = localStorage.getItem("token");
+
     const client = io(
       process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:61001",
       {
         autoConnect: false,
         transports: ["websocket"],
         auth: {
-          token: localStorage.getItem("token"),
+          token: token,
         },
       }
     );
 
     clientRef.current = client;
 
-    if (localStorage.getItem("token")) client.connect();
+    if (token) client.connect();
 
     client.on("connect", () => {
       console.log("Connected to server");
@@ -187,7 +197,7 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
       client.disconnect();
       clientRef.current = null;
     };
-  }, []);
+  }, [isMounted]);
 
   const sendGamedata = (data: unknown) => {
     if (clientRef.current) clientRef.current.emit("gamedata", data);
@@ -236,7 +246,7 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const assureConnection = () => {
-    if (!isConnected) {
+    if (!isConnected && typeof window !== 'undefined') {
       if (clientRef.current) {
         clientRef.current.auth = {
           ...clientRef.current.auth,

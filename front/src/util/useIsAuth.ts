@@ -5,19 +5,23 @@ import { usePathname, useRouter } from "next/navigation";
 import React from "react";
 
 interface UseIsAuthProps {
-  redirectToLogin?: boolean; // If true, redirect to login if no credentials was found
-  returnToCurrentPage?: boolean; // If true, return to previous page before login
+  redirectToLogin?: boolean;
+  returnToCurrentPage?: boolean;
 }
-/**
- *
- * @param props? UseIsAuthProps
- * @returns boolean | null - true if authenticated, false if not authenticated, null if not yet verified
- */
+
 export function useIsAuth(props?: UseIsAuthProps): boolean | null {
   const router = useRouter();
   const pathname = usePathname();
   const [isAuth, setIsAuth] = React.useState<null | boolean>(null);
+  const [isMounted, setIsMounted] = React.useState(false);
+
   React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (!isMounted) return;
+
     authStatus()
       .then((v) => {
         if (v) {
@@ -34,6 +38,7 @@ export function useIsAuth(props?: UseIsAuthProps): boolean | null {
           );
         }
       });
-  }, []);
+  }, [isMounted, props?.redirectToLogin, props?.returnToCurrentPage, pathname, router]);
+
   return isAuth;
 }
