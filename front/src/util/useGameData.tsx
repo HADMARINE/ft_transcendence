@@ -22,7 +22,7 @@ export enum IngameStatus {
   IN_PROGRESS = "IN_PROGRESS",
   NEXT_ROUND_SELECT = "NEXT_ROUND_SELECT",
   INTERMISSION = "INTERMISSION",
-  TERMINATED = "TERNIMATED",
+  TERMINATED = "TERMINATED",
   PAUSED = "PAUSED",
 }
 
@@ -88,12 +88,30 @@ const GameDataContext: React.Context<GameDataContextValue | undefined> =
 if (!(globalThis as any)[GLOBAL_KEY])
   (globalThis as any)[GLOBAL_KEY] = GameDataContext;
 
+// Hook pour localStorage qui ne s'exécute QUE côté client
+const useClientToken = () => {
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Vérification très stricte pour s'assurer qu'on est côté client
+    if (typeof window === 'undefined') return;
+    if (typeof localStorage === 'undefined') return;
+    
+    try {
+      const storedToken = localStorage.getItem("token");
+      setToken(storedToken);
+    } catch (error) {
+      console.warn('Failed to get token from localStorage:', error);
+    }
+  }, []);
+
+  return token;
+};
+
 export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const clientRef = useRef<Socket | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
-
   const [isConnected, setIsConnected] = useState(false);
   const [registerQueueStatus, setRegisterQueueStatus] =
     useState<RegisterQueueStatus>(RegisterQueueStatus.NOT_REGISTERED);
@@ -104,9 +122,8 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [winner, setWinner] = useState<string | null>(null);
   const [isUserReady, setIsUserReady] = useState<boolean>(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  // Utiliser le hook personnalisé pour le token
+  const token = useClientToken();
 
   useEffect(() => {
     if (ingameData && ingameData.status !== status) {
@@ -114,26 +131,36 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [ingameData, status]);
 
+  // Socket initialization - COMPLÈTEMENT isolé du serveur
   useEffect(() => {
-    // Ne s'exécute que côté client
+    // Vérifications multiples pour être ABSOLUMENT sûr d'être côté client
     if (typeof window === 'undefined') return;
+    if (typeof document === 'undefined') return;
+    if (typeof localStorage === 'undefined') return;
+    
+    // S'assurer que nous sommes dans un environnement de navigateur
+    if (!window.document) return;
 
-    const token = localStorage.getItem("token");
+    console.log("Initializing socket connection...");
 
     const client = io(
       process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:61001",
       {
         autoConnect: false,
         transports: ["websocket"],
-        auth: {
-          token: token,
-        },
+        auth: token ? { token } : undefined,
       }
     );
 
     clientRef.current = client;
 
-    if (token) client.connect();
+    // Ne connecter que si on a un token
+    if (token) {
+      console.log("Connecting with token...");
+      client.connect();
+    } else {
+      console.log("No token available, skipping connection");
+    }
 
     client.on("connect", () => {
       console.log("Connected to server");
@@ -146,7 +173,7 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     client.on("game-session", (data: GameData) => {
-      setIngameData({ ...ingameData, ...data });
+      setIngameData(prev => ({ ...prev, ...data }));
     });
 
     client.on("register-queue", (data: RegisterQueueStatus) => {
@@ -155,7 +182,7 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     client.on("ingame-comm", (data: GameData) => {
-      setIngameData({ ...ingameData, ...data });
+      setIngameData(prev => ({ ...prev, ...data }));
     });
 
     client.on("gamedata", (data: unknown) => {
@@ -163,29 +190,29 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     client.on("ready-user", (userid: string) => {
-      setReadyUsers((prev) => [...prev, userid]);
+      setReadyUsers(prev => [...prev, userid]);
     });
 
     client.on("cancel-ready-user", (userid: string) => {
-      setReadyUsers((prev) => prev.filter((id) => id !== userid));
+      setReadyUsers(prev => prev.filter((id) => id !== userid));
     });
 
     client.on(
       "game-config",
       (data: { user: string; color: string; map: string }) => {
-        if (ingameData && (ingameData as any).lobbyData) {
-          setIngameData((prev) => ({
-            ...(prev as any),
-            lobbyData: {
-              ...(prev as any).lobbyData,
-              [data.user]: {
-                ...((prev as any).lobbyData?.[data.user] || {}),
-                color: data.color,
-                map: data.map,
-              },
-            },
-          }));
-        }
+        setIngameData(prev => {
+          if (!prev) return prev;
+          const updated = { ...prev };
+          if (!(updated as any).lobbyData) {
+            (updated as any).lobbyData = {};
+          }
+          (updated as any).lobbyData[data.user] = {
+            ...((updated as any).lobbyData?.[data.user] || {}),
+            color: data.color,
+            map: data.map,
+          };
+          return updated;
+        });
       }
     );
 
@@ -194,65 +221,83 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     return () => {
-      client.disconnect();
+      console.log("Cleaning up socket connection...");
+      if (client.connected) {
+        client.disconnect();
+      }
       clientRef.current = null;
     };
-  }, [isMounted]);
+  }, [token]); // Se re-exécute seulement si le token change
 
   const sendGamedata = (data: unknown) => {
-    if (clientRef.current) clientRef.current.emit("gamedata", data);
+    if (clientRef.current && clientRef.current.connected) {
+      clientRef.current.emit("gamedata", data);
+    }
   };
 
   const registerQueue = (gametype: GametypeEnum) => {
-    if (clientRef.current) {
-      clientRef.current.emit("register-queue", {
-        gametype,
-      });
+    if (clientRef.current && clientRef.current.connected) {
+      clientRef.current.emit("register-queue", { gametype });
     }
   };
 
   const unregisterQueue = () => {
-    if (clientRef.current) clientRef.current.emit("unregister-queue");
+    if (clientRef.current && clientRef.current.connected) {
+      clientRef.current.emit("unregister-queue");
+    }
   };
 
   const readyUser = () => {
-    if (clientRef.current) {
+    if (clientRef.current && clientRef.current.connected) {
       clientRef.current.emit("ready-user");
       setIsUserReady(true);
     }
   };
 
   const cancelReadyUser = () => {
-    if (clientRef.current) {
+    if (clientRef.current && clientRef.current.connected) {
       clientRef.current.emit("cancel-ready-user");
       setIsUserReady(false);
     }
   };
 
   const gameConfig = (config: { color: string; map: string }) => {
-    if (clientRef.current) clientRef.current.emit("game-config", config);
+    if (clientRef.current && clientRef.current.connected) {
+      clientRef.current.emit("game-config", config);
+    }
   };
 
   const gameDataPong = (data: GamedataPongDto) => {
-    if (clientRef.current) clientRef.current.emit("gamedata-pong", data);
+    if (clientRef.current && clientRef.current.connected) {
+      clientRef.current.emit("gamedata-pong", data);
+    }
   };
 
   const gameDataShoot = (data: GamedataShootDto) => {
-    if (clientRef.current) clientRef.current.emit("gamedata-shoot", data);
+    if (clientRef.current && clientRef.current.connected) {
+      clientRef.current.emit("gamedata-shoot", data);
+    }
   };
 
   const gameDataWinner = (winner: string) => {
-    if (clientRef.current) clientRef.current.emit("gamedata-winner", winner);
+    if (clientRef.current && clientRef.current.connected) {
+      clientRef.current.emit("gamedata-winner", winner);
+    }
   };
 
   const assureConnection = () => {
-    if (!isConnected && typeof window !== 'undefined') {
-      if (clientRef.current) {
-        clientRef.current.auth = {
-          ...clientRef.current.auth,
-          token: localStorage.getItem("token"),
-        };
-        clientRef.current.connect();
+    if (typeof window === 'undefined') return;
+    if (!clientRef.current) return;
+    
+    if (!isConnected) {
+      try {
+        const currentToken = localStorage.getItem("token");
+        if (currentToken) {
+          clientRef.current.auth = { token: currentToken };
+          clientRef.current.connect();
+        }
+      } catch (error) {
+        console.warn('Failed to assure connection:', error);
       }
     }
   };
@@ -288,8 +333,19 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
 export function useGameData() {
   const ctx = useContext(GameDataContext);
-  if (!ctx)
+  
+  useEffect(() => {
+    if (ctx && typeof window !== 'undefined') {
+      // Timeout pour s'assurer que c'est bien exécuté après le rendu
+      setTimeout(() => {
+        ctx.assureConnection();
+      }, 0);
+    }
+  }, [ctx]);
+
+  if (!ctx) {
     throw new Error("useGameData must be used within a GameDataProvider");
-  ctx.assureConnection();
+  }
+
   return ctx;
 }
