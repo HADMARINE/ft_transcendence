@@ -4,7 +4,9 @@ import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { login } from "@/api/auth";
+import { updateUserStatus } from "@/api/users";
 import { useIsAuth } from "@/util/useIsAuth";
+import { TOKEN_SYNC_EVENT } from "@/util/useGameData";
 
 const styles = {
   container: {
@@ -158,6 +160,21 @@ const LoginPage = (props: { redirect?: string }) => {
     }
 
     console.log("Connexion réussie avec:", { email, password });
+
+    try {
+      localStorage.setItem("token", result.data);
+      window.dispatchEvent(new Event(TOKEN_SYNC_EVENT));
+    } catch (err) {
+      console.warn("Failed to persist auth token for websocket:", err);
+    }
+    
+    // Update user status to online after successful login
+    try {
+      await updateUserStatus('online');
+    } catch (err) {
+      console.error('Failed to update status to online:', err);
+    }
+    
     setError("");
     router.replace(props.redirect || "/home");
   };

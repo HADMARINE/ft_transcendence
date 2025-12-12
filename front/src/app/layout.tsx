@@ -14,7 +14,9 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className={inter.className}>
-        <GameDataProvider>{children}</GameDataProvider>
+        <GameDataProvider>
+          {children}
+        </GameDataProvider>
       </body>
     </html>
   );

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import { useGameStatus } from "@/util/useGameStatus";
 
 const ConfigScreen = dynamic(() => import('../../ConfigScreen'), { ssr: false });
 
@@ -146,6 +147,8 @@ const styles = {
 };
 
 const PongGame = () => {
+  useGameStatus("pong_1vs1_local");
+
   const [gameOver, setGameOver] = useState(false);
   const [gameConfig, setGameConfig] = useState(null);
   const [gameStarted, setGameStarted] = useState(false);

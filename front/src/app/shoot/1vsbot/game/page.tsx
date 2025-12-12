@@ -1,6 +1,7 @@
 'use client'
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react';
+import { useGameStatus } from "@/util/useGameStatus";
 
 interface GameLocalProps {
   mapId: string;
@@ -65,6 +66,8 @@ interface BotController {
 }
 
 const GameLocal = () => {
+  useGameStatus("shoot_vs_bot");
+
   const searchParams = useSearchParams();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fireEffectRef = useRef<HTMLDivElement>(null);

@@ -4,7 +4,8 @@ export type Friend = {
   id: string;
   username: string;
   email?: string;
-  online: boolean;
+  status: 'online' | 'offline' | 'in_game';
+  currentGameId?: string;
   avatar?: string;
 };
 
@@ -25,7 +26,9 @@ export type SearchResult = {
 
 export async function getFriends(userId: string): Promise<Friend[]> {
   const result = await client.get<Friend[]>(`/users/${userId}/friends`);
-  if (result.result === true) return result.data;
+  if (result.result === true) {
+    return result.data;
+  }
   return [];
 }
 

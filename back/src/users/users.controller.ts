@@ -14,6 +14,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateEmailDto } from './dto/update-email.dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
+import { UpdateStatusDto } from './dto/update-status.dto';
 import { FindAllUsersDto } from './dto/find-all-users.dto';
 import { Roles } from 'src/decorators/roles.decorator';
 import { AuthorityEnum } from './enums/authority.enum';
@@ -147,6 +148,19 @@ export class UsersController {
   @Roles(AuthorityEnum.NORMAL)
   getUserStats(@Param('id') id: string) {
     return this.usersService.getUserStats(id);
+  }
+
+  @Patch('me/status')
+  @Roles(AuthorityEnum.NORMAL)
+  updateMyStatus(
+    @Req() request: RequestWithUser,
+    @Body() updateStatusDto: UpdateStatusDto,
+  ) {
+    return this.usersService.updateUserStatus(
+      request.user.id,
+      updateStatusDto.status,
+      updateStatusDto.currentGameId,
+    );
   }
 
   @Delete(':id')

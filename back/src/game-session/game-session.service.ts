@@ -55,8 +55,23 @@ export class GameSessionService {
 
   async handleConnection(client: Socket) {
     try {
-      const token = (client.handshake.auth.Authorization ||
-        client.handshake.auth.token) as unknown;
+      const authFromPayload = client.handshake.auth
+        ? (client.handshake.auth.Authorization || client.handshake.auth.token)
+        : undefined;
+      const authFromCookie = (() => {
+        const cookieHeader = client.handshake.headers.cookie;
+        if (!cookieHeader || typeof cookieHeader !== 'string') return undefined;
+        const cookies = Object.fromEntries(
+          cookieHeader.split(';').map((c) => {
+            const [k, ...v] = c.trim().split('=');
+            return [k, v.join('=')];
+          }),
+        );
+        return cookies['Authorization'];
+      })();
+
+      const token = authFromPayload || authFromCookie;
+
       if (!token || typeof token !== 'string') {
         throw new JwtTokenInvalidException();
       }
@@ -70,6 +85,9 @@ export class GameSessionService {
       this.logger.debug(`User connected : ${user.id} - ${user.email}`);
 
       client.handshake.auth.user = user;
+
+      // Mark user as online when socket connects
+      await this.usersService.updateUserStatus(user.id, 'online');
 
       for (const activeGameSession of Object.values(this.activeGameSessions)) {
         if (
@@ -96,7 +114,7 @@ export class GameSessionService {
     }
   }
 
-  handleDisconnect(client: Socket) {
+  async handleDisconnect(client: Socket) {
     const user = client.handshake.auth.user as User;
 
     this.logger.debug(`User disconnected : ${user?.id} - ${user?.email}`);
@@ -109,9 +127,13 @@ export class GameSessionService {
     if (index !== -1) {
       this.userQueue.splice(index, 1);
     }
+
+    if (user?.id) {
+      await this.usersService.updateUserStatus(user.id, 'offline');
+    }
   }
 
-  registerQueue(client: Socket, registerQueueDto: RegisterQueueDto) {
+  async registerQueue(client: Socket, registerQueueDto: RegisterQueueDto) {
     const user = client.handshake.auth.user as User;
 
     for (const userQueue of this.userQueue) {
@@ -130,9 +152,13 @@ export class GameSessionService {
 
     this.userQueue.push(newUserQueue);
     client.emit('register-queue', RegisterQueueStatus.REGISTERED);
+
+    // Mark player as in_game with current game type
+    const gameId = registerQueueDto.gametype.toLowerCase();
+    await this.usersService.updateUserStatus(user.id, 'in_game', gameId);
   }
 
-  unregisterQueue(client: Socket) {
+  async unregisterQueue(client: Socket) {
     const user = client.handshake.auth.user as User;
 
     const index = this.userQueue.findIndex(
@@ -147,6 +173,8 @@ export class GameSessionService {
     this.userQueue.splice(index, 1);
 
     client.emit('register-queue', RegisterQueueStatus.UNREGISTERED);
+
+    await this.usersService.updateUserStatus(user.id, 'online');
   }
 
   private handleGameQueueEntry(
@@ -453,6 +481,15 @@ export class GameSessionService {
     activeGameSession.status = IngameStatus.TERMINATED;
 
     room.emit('ingame-comm', this.omitSensitives(activeGameSession));
+
+    // Game finished: set all players back to online and clear currentGameId
+    await Promise.all(
+      activeGameSession.players.map((p) =>
+        this.usersService.updateUserStatus(p.user.id, 'online'),
+      ),
+    );
+
+    delete this.activeGameSessions[activeGameSession.id];
   }
 
   readyUser(client: Socket) {
@@ -613,5 +650,20 @@ export class GameSessionService {
     activeGameSession.status = IngameStatus.INTERMISSION;
 
     activeGameSession.room.emit('gamedata-winner', data);
+  }
+
+  async userStatusChanged(
+    client: Socket,
+    data: { status: string; currentGameId?: string },
+  ) {
+    const user = client.handshake.auth.user as User;
+    if (!user?.id) return;
+
+    // Broadcast status change to all connected clients so they see it in friends list
+    this.server.emit('user-status-updated', {
+      userId: user.id,
+      status: data.status,
+      currentGameId: data.currentGameId,
+    });
   }
 }

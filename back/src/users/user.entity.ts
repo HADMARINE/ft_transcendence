@@ -50,4 +50,10 @@ export class User {
     },
   })
   friends: string[];
+
+  @Column({ type: 'text', default: 'offline' })
+  status: 'online' | 'offline' | 'in_game';
+
+  @Column({ type: 'text', nullable: true })
+  currentGameId?: string;
 }

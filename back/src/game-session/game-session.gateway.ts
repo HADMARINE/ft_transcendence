@@ -100,4 +100,12 @@ export class GameSessionGateway
   ) {
     this.gameSessionService.gamedataWinner(client, data);
   }
+
+  @SubscribeMessage('user-status-changed')
+  userStatusChanged(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { status: string; currentGameId?: string },
+  ) {
+    this.gameSessionService.userStatusChanged(client, data);
+  }
 }

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useIsAuth } from "@/util/useIsAuth";
+import { useGameStatus } from "@/util/useGameStatus";
 
 const styles = {
   container: {
@@ -80,6 +81,8 @@ const styles = {
 };
 
 export default function HomePage() {
+  useGameStatus("online");
+
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const auth = useIsAuth({ redirectToLogin: true, returnToCurrentPage: true });

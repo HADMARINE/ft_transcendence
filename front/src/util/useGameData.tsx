@@ -9,6 +9,9 @@ import React, {
 } from "react";
 import { io, Socket } from "socket.io-client";
 
+// Event name used to keep websocket auth token in sync across tabs.
+export const TOKEN_SYNC_EVENT = "ft-token-changed";
+
 export enum RegisterQueueStatus {
   REGISTERED = "REGISTERED",
   UNREGISTERED = "UNREGISTERED",
@@ -88,10 +91,43 @@ const GameDataContext: React.Context<GameDataContextValue | undefined> =
 if (!(globalThis as any)[GLOBAL_KEY])
   (globalThis as any)[GLOBAL_KEY] = GameDataContext;
 
-// Hook pour localStorage qui ne s'exécute QUE côté client
+// Hook pour récupérer le token stocké côté client (localStorage)
 const useClientToken = () => {
+  const [token, setToken] = useState<string | undefined>(undefined);
 
-  return null;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const readToken = () => {
+      const t = localStorage.getItem("token");
+      return t || undefined;
+    };
+    const syncToken = () => setToken(readToken());
+
+    // Initial sync
+    syncToken();
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === "token") {
+        syncToken();
+      }
+    };
+
+    const handleCustomEvent = (_event?: Event) => syncToken();
+
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener(TOKEN_SYNC_EVENT, handleCustomEvent as EventListener);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(
+        TOKEN_SYNC_EVENT,
+        handleCustomEvent as EventListener,
+      );
+    };
+  }, []);
+
+  return token;
 };
 
 export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -107,6 +143,7 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [readyUsers, setReadyUsers] = useState<string[]>([]);
   const [winner, setWinner] = useState<string | null>(null);
   const [isUserReady, setIsUserReady] = useState<boolean>(false);
+  const [socketInitialized, setSocketInitialized] = useState(false);
 
   // Utiliser le hook personnalisé pour le token
   const token = useClientToken();
@@ -117,30 +154,24 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [ingameData, status]);
 
-  // Socket initialization - COMPLÈTEMENT isolé du serveur
+  // Socket initialization - Connect once on mount, even without token (cookie auth fallback)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    console.log("Initializing socket connection...");
+    if (typeof window === 'undefined' || socketInitialized) return;
+
+    console.log("Initializing socket connection with withCredentials...");
+    setSocketInitialized(true);
 
     const client = io(
       process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000",
       {
-        autoConnect: true, // Changé à true
+        autoConnect: true,
         transports: ["websocket"],
-        withCredentials: true, // Important : envoie les cookies
+        withCredentials: true,
+        auth: token ? { Authorization: token } : {},
       }
     );
 
     clientRef.current = client;
-
-    // Ne connecter que si on a un token
-    if (token) {
-      console.log("Connecting with token...");
-      client.connect();
-    } else {
-      console.log("No token available, skipping connection");
-    }
 
     client.on("connect", () => {
       console.log("Connected to server");
@@ -150,6 +181,10 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     client.on("disconnect", () => {
       console.log("Disconnected from server");
       setIsConnected(false);
+    });
+
+    client.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
     });
 
     client.on("game-session", (data: GameData) => {
@@ -200,14 +235,30 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
       setWinner(data);
     });
 
+    client.on("user-status-updated", (data: { userId: string; status: string; currentGameId?: string }) => {
+      console.log("User status updated:", data);
+    });
+
     return () => {
       console.log("Cleaning up socket connection...");
+      client.removeAllListeners();
       if (client.connected) {
         client.disconnect();
       }
       clientRef.current = null;
+      setIsConnected(false);
     };
-  }, [token]); // Se re-exécute seulement si le token change
+  }, [socketInitialized]);
+
+  // Update auth token if it changes
+  useEffect(() => {
+    if (token && clientRef.current) {
+      clientRef.current.auth = { Authorization: token };
+      if (!clientRef.current.connected) {
+        clientRef.current.connect();
+      }
+    }
+  }, [token]);
 
   const sendGamedata = (data: unknown) => {
     if (clientRef.current && clientRef.current.connected) {
@@ -268,14 +319,10 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const assureConnection = () => {
     if (typeof window === 'undefined') return;
     if (!clientRef.current) return;
-    
+
     if (!isConnected) {
       try {
-        const currentToken = localStorage.getItem("token");
-        if (currentToken) {
-          clientRef.current.auth = { token: currentToken };
-          clientRef.current.connect();
-        }
+        clientRef.current.connect();
       } catch (error) {
         console.warn('Failed to assure connection:', error);
       }
@@ -316,7 +363,6 @@ export function useGameData() {
   
   useEffect(() => {
     if (ctx && typeof window !== 'undefined') {
-      // Timeout pour s'assurer que c'est bien exécuté après le rendu
       setTimeout(() => {
         ctx.assureConnection();
       }, 0);

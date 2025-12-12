@@ -71,3 +71,18 @@ export async function updateUserProfile(
     };
   }
 }
+
+export async function updateUserStatus(
+  status: 'online' | 'offline' | 'in_game',
+  currentGameId?: string
+): Promise<{ success: boolean; status?: string }> {
+  const result = await client.patch<{ success: boolean; status?: string }>(
+    '/users/me/status',
+    { status, currentGameId }
+  );
+  
+  if (result.result === true && result.data) {
+    return result.data;
+  }
+  return { success: false };
+}

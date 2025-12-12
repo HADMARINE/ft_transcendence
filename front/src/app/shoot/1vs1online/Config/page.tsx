@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useGameStatus } from "@/util/useGameStatus";
 
 const ForestMap = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200">
@@ -24,6 +25,8 @@ const CityMap = () => (
   </svg>
 );
 const GameCustomisation: React.FC = () => {
+  useGameStatus("shoot_config");
+
   const [selectedMapId, setSelectedMapId] = useState('map1');
   const [player1Color, setPlayer1Color] = useState('#00ccff');
   const [player2Color, setPlayer2Color] = useState('#ff6666');

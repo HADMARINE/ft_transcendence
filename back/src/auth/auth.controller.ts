@@ -14,14 +14,16 @@ import { RequestWithUser } from './interfaces/request-with-user.interface';
 import { FastifyReply } from 'fastify';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { Roles } from 'src/decorators/roles.decorator';
-import ms from 'ms';
 import { ConfigService } from '@nestjs/config';
+import { UsersService } from 'src/users/users.service';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
+    private readonly usersService: UsersService,
   ) {}
 
   @HttpCode(HttpStatus.OK)
@@ -38,12 +40,24 @@ export class AuthController {
       this.authService.getCookieConfigTokenGenerationIntegrated(user);
     res.setCookie(...cookieResult);
 
+    // Mark user as online on successful login
+    void this.usersService.updateUserStatus(user.id, 'online');
+
     return cookieResult[1];
   }
 
   @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
   @Post('logout')
-  logout(@Res({ passthrough: true }) res: FastifyReply) {
+  logout(
+    @Req() req: RequestWithUser,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
+    // Mark user as offline on logout
+    if (req.user?.id) {
+      void this.usersService.updateUserStatus(req.user.id, 'offline');
+    }
+
     res.clearCookie('Authorization', {
       // httpOnly: true,
       // path: '/',

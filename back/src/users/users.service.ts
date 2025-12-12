@@ -1,7 +1,7 @@
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { User } from './user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AuthService } from 'src/auth/auth.service';
@@ -195,12 +195,13 @@ export class UsersService {
       return [];
     }
 
-    const friends = await this.usersRepository.findByIds(user.friends);
+    const friends = await this.usersRepository.findBy({ id: In(user.friends) });
     return friends.map((f) => ({
       id: f.id,
       username: f.nickname,
       email: f.email,
-      online: false, // TODO: integrate with real online status
+      status: f.status || 'offline',
+      currentGameId: f.currentGameId,
     }));
   }
 
@@ -275,5 +276,26 @@ export class UsersService {
       games: [],
       history: [],
     };
+  }
+
+  async updateUserStatus(
+    userId: string,
+    status: 'online' | 'offline' | 'in_game',
+    currentGameId?: string,
+  ) {
+    const user = await this.usersRepository.findOneBy({ id: userId });
+    if (!user) {
+      throw new DataNotFoundException({ name: 'user' });
+    }
+
+    user.status = status;
+    if (status === 'in_game' && currentGameId) {
+      user.currentGameId = currentGameId;
+    } else if (status !== 'in_game') {
+      user.currentGameId = undefined;
+    }
+
+    await this.usersRepository.save(user);
+    return { success: true, status: user.status };
   }
 }

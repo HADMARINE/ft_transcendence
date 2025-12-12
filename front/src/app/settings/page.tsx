@@ -2,15 +2,19 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiUser, FiMail, FiLock, FiUsers, FiUserPlus, FiSettings, FiCheck, FiX, FiBarChart2 } from 'react-icons/fi';
-import { getCurrentUser, updateUserEmail, updateUserPassword, UserProfile } from '../../api/users';
+import { getCurrentUser, updateUserEmail, updateUserPassword, updateUserStatus, UserProfile } from '../../api/users';
 import { getFriends, getFriendRequests, searchUsers, sendFriendRequest, acceptFriendRequest, declineFriendRequest, SearchResult, FriendRequest as ApiFriendRequest, Friend } from '../../api/friends';
 import { getUserStats, UserStats } from '../../api/stats';
+import { logout as logoutApi } from '../../api/auth';
+import { useGameData } from '@/util/useGameData';
 
 const ProfilePage = () => {
   const router = useRouter();
+  const gameData = useGameData();
   
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   
   // États pour les données utilisateur
@@ -43,6 +47,8 @@ const ProfilePage = () => {
         setUserId(profile.id);
         setUserProfile(profile);
         setEmail(profile.email);
+        // Set status to online when user opens settings
+        await updateUserStatus('online');
       } else {
         router.push('/login');
       }
@@ -62,6 +68,36 @@ const ProfilePage = () => {
       loadStats();
     }
   }, [userId]);
+  
+  // Auto-refresh friends list when on friends tab
+  useEffect(() => {
+    if (activeTab === 'friends' && userId) {
+      const interval = setInterval(() => {
+        loadFriends();
+      }, 5000); // Refresh every 5 seconds
+      
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, userId]);
+
+  // Listen for user status updates via websocket
+  useEffect(() => {
+    if (!gameData?.client) return;
+
+    const handleStatusUpdate = (data: { userId: string; status: string; currentGameId?: string }) => {
+      console.log("Status update received:", data);
+      // Reload friends when any user status changes
+      if (activeTab === 'friends') {
+        loadFriends();
+      }
+    };
+
+    gameData.client.on("user-status-updated", handleStatusUpdate);
+
+    return () => {
+      gameData.client?.off("user-status-updated", handleStatusUpdate);
+    };
+  }, [gameData?.client, activeTab]);
   
   async function loadFriends() {
     if (!userId) return;
@@ -148,6 +184,21 @@ const ProfilePage = () => {
       alert('Une erreur est survenue');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      // Set status to offline before logging out
+      await updateUserStatus('offline');
+      await logoutApi();
+      router.push('/login');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      alert('Erreur lors de la déconnexion');
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -292,16 +343,31 @@ const ProfilePage = () => {
           <h1 style={{ fontSize: '2.5rem', color: '#4cc9f0', textShadow: '0 0 10px rgba(76, 201, 240, 0.7)' }}>
             Mon Profil
           </h1>
-          <button 
-            onClick={() => router.push('/home')}
-            style={{
-              ...buttonStyle,
-              background: 'rgba(247, 37, 133, 0.2)',
-              border: '1px solid rgba(247, 37, 133, 0.5)'
-            }}
-          >
-            Retour à l'accueil
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              onClick={() => router.push('/home')}
+              style={{
+                ...buttonStyle,
+                background: 'rgba(247, 37, 133, 0.2)',
+                border: '1px solid rgba(247, 37, 133, 0.5)'
+              }}
+            >
+              Retour à l'accueil
+            </button>
+            <button
+              onClick={handleLogout}
+              style={{
+                ...buttonStyle,
+                background: 'rgba(255, 77, 109, 0.2)',
+                border: '1px solid rgba(255, 77, 109, 0.5)',
+                opacity: isLoggingOut ? 0.7 : 1,
+                cursor: isLoggingOut ? 'not-allowed' : 'pointer'
+              }}
+              disabled={isLoggingOut}
+            >
+              Déconnexion
+            </button>
+          </div>
         </div>
 
         {}
@@ -651,11 +717,19 @@ const ProfilePage = () => {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 'bold' }}>{friend.username}</div>
-                      <div style={{ fontSize: '0.9rem', color: friend.online ? '#4cf06e' : '#aaa' }}>
-                        {friend.online ? 'En ligne' : 'Hors ligne'}
+                      <div style={{ 
+                        fontSize: '0.9rem', 
+                        color: friend.status === 'online' ? '#4cf06e' : friend.status === 'in_game' ? '#f0b84c' : '#aaa',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}>
+                        {friend.status === 'online' && 'En ligne'}
+                        {friend.status === 'offline' && 'Hors ligne'}
+                        {friend.status === 'in_game' && 'En jeu'}
                       </div>
                     </div>
-                    {friend.online && (
+                    {(friend.status === 'online' || friend.status === 'in_game') && (
                       <div style={{
                         position: 'absolute',
                         top: '15px',
@@ -663,8 +737,10 @@ const ProfilePage = () => {
                         width: '10px',
                         height: '10px',
                         borderRadius: '50%',
-                        background: '#4cf06e',
-                        boxShadow: '0 0 10px rgba(76, 240, 110, 0.7)'
+                        background: friend.status === 'in_game' ? '#f0b84c' : '#4cf06e',
+                        boxShadow: friend.status === 'in_game' 
+                          ? '0 0 10px rgba(240, 184, 76, 0.7)' 
+                          : '0 0 10px rgba(76, 240, 110, 0.7)'
                       }} />
                     )}
                   </div>

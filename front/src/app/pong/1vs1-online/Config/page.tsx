@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useGameStatus } from "@/util/useGameStatus";
 
 const styles = {
   configContainer: {
@@ -71,6 +72,8 @@ const styles = {
 };
 
 const ConfigScreen = ({ onConfigSubmit }) => {
+  useGameStatus("pong_config");
+
   const [paddleSpeed, setPaddleSpeed] = useState(20);
   const [paddleColor, setPaddleColor] = useState('#4cc9f0');
   const [ballColor, setBallColor] = useState('#f72585');

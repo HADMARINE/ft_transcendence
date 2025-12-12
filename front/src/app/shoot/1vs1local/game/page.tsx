@@ -1,6 +1,7 @@
 'use client'
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react';
+import { useGameStatus } from "@/util/useGameStatus";
 
 interface GameLocalProps {
   mapId: string;
@@ -57,6 +58,8 @@ interface Particle {
 }
 
 const GameLocal = () => {
+  useGameStatus("shoot_1vs1_local");
+
   const searchParams = useSearchParams();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fireEffectRef = useRef<HTMLDivElement>(null);
