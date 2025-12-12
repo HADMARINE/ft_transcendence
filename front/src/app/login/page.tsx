@@ -157,10 +157,6 @@ const LoginPage = (props: { redirect?: string }) => {
       return;
     }
 
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("token", result.data);
-    }
-
     console.log("Connexion réussie avec:", { email, password });
     setError("");
     router.replace(props.redirect || "/home");

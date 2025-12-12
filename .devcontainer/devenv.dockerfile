@@ -32,10 +32,10 @@ RUN echo \
     $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 RUN sudo apt update
 RUN sudo apt -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
-
-
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash \
     # && source ~/.bashrc \
+
+
+RUN sudo curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash \
     && source ~/.profile \
     && nvm install node \
     && npm i -g yarn

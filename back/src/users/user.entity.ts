@@ -35,11 +35,16 @@ export class User {
     type: 'text',
     default: '[]',
     transformer: {
-      from: (value: string) => {
-        if (typeof value === 'object') {
-          return JSON.parse(value) as string[];
+      from: (value: unknown) => {
+        if (Array.isArray(value)) return value as string[];
+        if (typeof value === 'string') {
+          try {
+            return JSON.parse(value) as string[];
+          } catch (e) {
+            return [];
+          }
         }
-        return value;
+        return [];
       },
       to: (value: string[]) => JSON.stringify(value),
     },

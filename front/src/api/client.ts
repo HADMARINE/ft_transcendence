@@ -28,7 +28,9 @@ function customClient() {
     config: Parameters<typeof baseClient.request<T>>[0]
   ): Promise<ResponseResult<T>> {
     try {
+      console.log('API Request:', config.method?.toUpperCase(), config.url, config.data);
       const res = await baseClient.request(config);
+      console.log('API Response:', res.status, res.data);
       return {
         result: true,
         data: res.data,
@@ -40,13 +42,15 @@ function customClient() {
       }
 
       if (e.response) {
+        console.error('API Error Response:', e.response.status, e.response.data);
         return {
           result: false,
           data: e.response?.data || {},
           raw: e,
         };
       } else if (e.request) {
-        console.error(e.request);
+        console.error('API Request Error - No response received:', e.message);
+        console.error('Request config:', { url: e.config?.url, method: e.config?.method });
         return {
           result: false,
           data: null,

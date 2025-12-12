@@ -6,9 +6,6 @@ export async function login(params: {
 }): Promise<{ result: boolean; data: string }> {
   const response = await client.post<string>("/auth/login", params);
   if (response.result === true) {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("token", response.data);
-    }
     return {
       result: true,
       data: response.data as string,
@@ -38,9 +35,6 @@ export async function register(params: {
 }
 
 export async function logout(): Promise<void> {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem("token");
-  }
   await client.post("/auth/logout");
 }
 

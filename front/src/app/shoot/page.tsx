@@ -100,7 +100,7 @@ const ModeSelectionPage: React.FC = () => {
       {showOnlineLoading && (
         <div style={styles.onlineLoadingOverlay}>
           <div style={styles.onlineLoadingPopup}>
-            <h2 style={styles.onlineLoadingTitle}>Recherche d'un adversaire en ligne...</h2>
+            <h2 style={styles.onlineLoadingTitle}>Recherche d'adversaires</h2>
             
             <div style={styles.spinnerContainer}>
               <div style={styles.spinner}></div>

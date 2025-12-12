@@ -1,7 +1,7 @@
 # ft_transcendence
 
 Pour lancer
-
+node 20 sinon boom boom
 yarn
 yarn quickcert decrypt (suivre les prompts)
 

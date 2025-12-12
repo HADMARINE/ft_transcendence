@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { useRouter } from "next/navigation";
 import {
   GametypeEnum,
@@ -143,6 +144,19 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     margin: "30px 0",
+  },
+    spinnerContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    margin: '30px 0',
+  },
+  spinner: {
+    width: '80px',
+    height: '80px',
+    border: '8px solid rgba(255, 255, 255, 0.1)',
+    borderTop: '8px solid #00ccff',
+    borderRadius: '50%',
+    animation: 'spin 1.5s linear infinite',
   },
   loadingSpinner: {
     border: "5px solid rgba(76, 201, 240, 0.3)",
@@ -313,9 +327,8 @@ export default function PongModesPage() {
         <div style={styles.popupOverlay as React.CSSProperties}>
           <div style={styles.popupContent as React.CSSProperties}>
             <h2 style={styles.popupTitle as React.CSSProperties}>
-              Recherche d'adversaire
+              Recherche d'adversaire...
             </h2>
-
             <div style={styles.loadingContainer as React.CSSProperties}>
               {gameData.registerQueueStatus == RegisterQueueStatus.REGISTERED &&
                 !gameData.status && (

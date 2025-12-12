@@ -29,9 +29,17 @@ async function bootstrap() {
     // Debug
   }
 
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:4000',
+    process.env.REQUEST_URI,
+  ].filter((origin): origin is string => Boolean(origin));
+
   app.enableCors({
-    origin: process.env.REQUEST_URI || '*',
+    origin: allowedOrigins,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   });
 
   app.enableVersioning({

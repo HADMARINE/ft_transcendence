@@ -90,22 +90,8 @@ if (!(globalThis as any)[GLOBAL_KEY])
 
 // Hook pour localStorage qui ne s'exécute QUE côté client
 const useClientToken = () => {
-  const [token, setToken] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Vérification très stricte pour s'assurer qu'on est côté client
-    if (typeof window === 'undefined') return;
-    if (typeof localStorage === 'undefined') return;
-    
-    try {
-      const storedToken = localStorage.getItem("token");
-      setToken(storedToken);
-    } catch (error) {
-      console.warn('Failed to get token from localStorage:', error);
-    }
-  }, []);
-
-  return token;
+  return null;
 };
 
 export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -133,22 +119,16 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Socket initialization - COMPLÈTEMENT isolé du serveur
   useEffect(() => {
-    // Vérifications multiples pour être ABSOLUMENT sûr d'être côté client
     if (typeof window === 'undefined') return;
-    if (typeof document === 'undefined') return;
-    if (typeof localStorage === 'undefined') return;
     
-    // S'assurer que nous sommes dans un environnement de navigateur
-    if (!window.document) return;
-
     console.log("Initializing socket connection...");
 
     const client = io(
-      process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:61001",
+      process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000",
       {
-        autoConnect: false,
+        autoConnect: true, // Changé à true
         transports: ["websocket"],
-        auth: token ? { token } : undefined,
+        withCredentials: true, // Important : envoie les cookies
       }
     );
 

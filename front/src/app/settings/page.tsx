@@ -1,109 +1,224 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiUser, FiMail, FiLock, FiUsers, FiUserPlus, FiSettings, FiCheck, FiX, FiBarChart2 } from 'react-icons/fi';
+import { getCurrentUser, updateUserEmail, updateUserPassword, UserProfile } from '../../api/users';
+import { getFriends, getFriendRequests, searchUsers, sendFriendRequest, acceptFriendRequest, declineFriendRequest, SearchResult, FriendRequest as ApiFriendRequest, Friend } from '../../api/friends';
+import { getUserStats, UserStats } from '../../api/stats';
 
 const ProfilePage = () => {
   const router = useRouter();
   
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   
-  const [email, setEmail] = useState('user@example.com');
+  // États pour les données utilisateur
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [email, setEmail] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // États pour les amis
   const [searchQuery, setSearchQuery] = useState('');
+  const [friendRequests, setFriendRequests] = useState<ApiFriendRequest[]>([]);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   
-  const [friendRequests, setFriendRequests] = useState([
-    { id: 1, name: 'Alex Martin', avatar: null, mutualFriends: 5 },
-    { id: 2, name: 'Sophie Dubois', avatar: null, mutualFriends: 3 },
-  ]);
+  // États pour les statistiques
+  const [stats, setStats] = useState<UserStats | null>(null);
   
-  const [friends, setFriends] = useState([
-    { id: 1, name: 'Jean Dupont', avatar: null, online: true },
-    { id: 2, name: 'Marie Curie', avatar: null, online: false },
-    { id: 3, name: 'Thomas Edison', avatar: null, online: true },
-  ]);
-  
-  const [searchResults, setSearchResults] = useState([
-    { id: 1, name: 'Camille Rousseau', avatar: null, mutualFriends: 2 },
-    { id: 2, name: 'Lucas Bernard', avatar: null, mutualFriends: 4 },
-  ]);
+  // Charger l'utilisateur connecté
+  useEffect(() => {
+    loadCurrentUser();
+  }, []);
 
-  const [stats, setStats] = useState({
-    totalGames: 42,
-    winRate: 65,
-    games: [
-      { name: 'Pong', played: 20, won: 15 },
-      { name: 'Shoot', played: 22, won: 12 }
-    ],
-    history: [
-      { id: 1, game: 'Pong', result: 'win', date: '2024-05-01', opponent: 'Alex Martin' },
-      { id: 2, game: 'Shoot', result: 'loss', date: '2024-05-02', opponent: 'Sophie Dubois' },
-      { id: 3, game: 'Pong', result: 'win', date: '2024-05-03', opponent: 'Thomas Edison' },
-      { id: 4, game: 'Shoot', result: 'win', date: '2024-05-04', opponent: 'Jean Dupont' },
-      { id: 5, game: 'Pong', result: 'loss', date: '2024-05-05', opponent: 'Marie Curie' },
-      { id: 6, game: 'Shoot', result: 'win', date: '2024-05-06', opponent: 'Camille Rousseau' },
-      { id: 7, game: 'Pong', result: 'loss', date: '2024-05-07', opponent: 'Lucas Bernard' },
-      { id: 8, game: 'Shoot', result: 'loss', date: '2024-05-08', opponent: 'Alex Martin' },
-    ]
-  });
-
-  const handleEmailChange = (e: React.FormEvent) => {
-    e.preventDefault();
+  async function loadCurrentUser() {
     setIsLoading(true);
-    setTimeout(() => {
-      setEmail(newEmail);
-      setNewEmail('');
+    try {
+      const profile = await getCurrentUser();
+      if (profile) {
+        setUserId(profile.id);
+        setUserProfile(profile);
+        setEmail(profile.email);
+      } else {
+        router.push('/login');
+      }
+    } catch (error) {
+      console.error('Error loading current user:', error);
+      router.push('/login');
+    } finally {
       setIsLoading(false);
-      alert('Adresse email mise à jour avec succès!');
-    }, 1000);
+    }
+  }
+  
+  // Charger les données des amis et stats
+  useEffect(() => {
+    if (userId) {
+      loadFriends();
+      loadFriendRequests();
+      loadStats();
+    }
+  }, [userId]);
+  
+  async function loadFriends() {
+    if (!userId) return;
+    try {
+      const friendsList = await getFriends(userId);
+      setFriends(friendsList);
+    } catch (error) {
+      console.error('Error loading friends:', error);
+    }
+  }
+  
+  async function loadFriendRequests() {
+    if (!userId) return;
+    try {
+      const requests = await getFriendRequests(userId);
+      setFriendRequests(requests);
+    } catch (error) {
+      console.error('Error loading friend requests:', error);
+    }
+  }
+  
+  async function loadStats() {
+    if (!userId) return;
+    try {
+      const userStats = await getUserStats(userId);
+      if (userStats) {
+        setStats(userStats);
+      }
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+  }
+
+  const handleEmailChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId) return;
+    
+    console.log('Attempting to update email:', { newEmail, hasPassword: !!currentPassword });
+    
+    setIsLoading(true);
+    try {
+      const result = await updateUserEmail(newEmail, currentPassword);
+      console.log('Update email result:', result);
+      
+      if (result.success) {
+        setEmail(newEmail);
+        setNewEmail('');
+        setCurrentPassword('');
+        alert('Adresse email mise à jour avec succès!');
+        await loadCurrentUser();
+      } else {
+        alert(`Erreur: ${result.message || 'Échec de la mise à jour'}`);
+      }
+    } catch (error) {
+      console.error('Error updating email:', error);
+      alert('Une erreur est survenue');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId) return;
+    
     if (newPassword !== confirmPassword) {
       alert('Les mots de passe ne correspondent pas!');
       return;
     }
     
     setIsLoading(true);
-    setTimeout(() => {
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+    try {
+      const result = await updateUserPassword(currentPassword, newPassword);
+      if (result.success) {
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        alert('Mot de passe mis à jour avec succès!');
+      } else {
+        alert(`Erreur: ${result.message || 'Échec de la mise à jour'}`);
+      }
+    } catch (error) {
+      console.error('Error updating password:', error);
+      alert('Une erreur est survenue');
+    } finally {
       setIsLoading(false);
-      alert('Mot de passe mis à jour avec succès!');
-    }, 1000);
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearchResults([
-      { id: 1, name: 'Camille Rousseau', avatar: null, mutualFriends: 2 },
-      { id: 2, name: 'Lucas Bernard', avatar: null, mutualFriends: 4 },
-      { id: 3, name: searchQuery, avatar: null, mutualFriends: 0 },
-    ]);
-  };
-
-  const sendFriendRequest = (id: number) => {
-    alert(`Demande d'ami envoyée à ${searchResults.find(u => u.id === id)?.name}`);
-    setSearchResults(searchResults.filter(u => u.id !== id));
-  };
-
-  const acceptFriendRequest = (id: number) => {
-    const request = friendRequests.find(r => r.id === id);
-    if (request) {
-      setFriends([...friends, { id: Date.now(), name: request.name, avatar: null, online: true }]);
-      setFriendRequests(friendRequests.filter(r => r.id !== id));
-      alert(`Vous êtes maintenant ami avec ${request.name}!`);
     }
   };
 
-  const declineFriendRequest = (id: number) => {
-    setFriendRequests(friendRequests.filter(r => r.id !== id));
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim() || !userId) return;
+    
+    try {
+      const results = await searchUsers(searchQuery);
+      const filteredResults = results.filter(
+        result => result.id !== userId && 
+        !friends.some(friend => friend.id === result.id)
+      );
+      setSearchResults(filteredResults);
+    } catch (error) {
+      console.error('Error searching users:', error);
+    }
+  };
+  
+  const handleSendFriendRequest = async (targetId: string) => {
+    if (!userId) return;
+    
+    try {
+      const result = await sendFriendRequest(userId, targetId);
+      if (result.success) {
+        const targetUser = searchResults.find(u => u.id === targetId);
+        alert(`Demande d'ami envoyée à ${targetUser?.username}`);
+        setSearchResults(searchResults.filter(u => u.id !== targetId));
+        // Recharger la liste d'amis
+        loadFriends();
+      } else {
+        alert(`Erreur: ${result.message || 'Échec de l\'envoi'}`);
+      }
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+    }
+  };
+  
+  const handleAcceptFriendRequest = async (requestId: string) => {
+    if (!userId) return;
+    
+    try {
+      const result = await acceptFriendRequest(userId, requestId);
+      if (result.success) {
+        const request = friendRequests.find(r => r.id === requestId);
+        if (request) {
+          setFriendRequests(friendRequests.filter(r => r.id !== requestId));
+          loadFriends();
+          alert(`Vous êtes maintenant ami avec ${request.senderName}!`);
+        }
+      } else {
+        alert(`Erreur: ${result.message || 'Échec de l\'acceptation'}`);
+      }
+    } catch (error) {
+      console.error('Error accepting friend request:', error);
+    }
+  };
+  
+  const handleDeclineFriendRequest = async (requestId: string) => {
+    if (!userId) return;
+    
+    try {
+      const result = await declineFriendRequest(userId, requestId);
+      if (result.success) {
+        setFriendRequests(friendRequests.filter(r => r.id !== requestId));
+      } else {
+        alert(`Erreur: ${result.message || 'Échec du refus'}`);
+      }
+    } catch (error) {
+      console.error('Error declining friend request:', error);
+    }
   };
 
   const containerStyle = {
@@ -149,6 +264,26 @@ const ProfilePage = () => {
     marginBottom: '15px',
     fontSize: '16px',
   };
+
+  if (!userProfile && isLoading) {
+    return (
+      <div style={containerStyle}>
+        <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center', paddingTop: '100px' }}>
+          <div style={{ color: '#4cc9f0', fontSize: '1.5rem' }}>Chargement du profil...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!userProfile) {
+    return (
+      <div style={containerStyle}>
+        <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center', paddingTop: '100px' }}>
+          <div style={{ color: '#f72585', fontSize: '1.5rem' }}>Erreur: Profil non disponible</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={containerStyle}>
@@ -223,8 +358,8 @@ const ProfilePage = () => {
           </button>
         </div>
 
-        {}
-        {activeTab === 'profile' && (
+        {/* Onglet Profil */}
+        {activeTab === 'profile' && userProfile && (
           <div style={cardStyle}>
             <h2 style={{ fontSize: '1.8rem', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <FiUser /> Informations du compte
@@ -233,16 +368,28 @@ const ProfilePage = () => {
             <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '250px' }}>
                 <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', color: '#4cc9f0' }}>Nom complet</label>
+                  <label style={{ display: 'block', marginBottom: '8px', color: '#4cc9f0' }}>Nom d'utilisateur</label>
                   <div style={{ padding: '12px', background: 'rgba(22, 33, 62, 0.5)', borderRadius: '8px' }}>
-                    John Doe
+                    {userProfile.username || 'N/A'}
                   </div>
                 </div>
                 
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{ display: 'block', marginBottom: '8px', color: '#4cc9f0' }}>Adresse email</label>
                   <div style={{ padding: '12px', background: 'rgba(22, 33, 62, 0.5)', borderRadius: '8px' }}>
-                    {email}
+                    {userProfile.email}
+                  </div>
+                </div>
+                
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', color: '#4cc9f0' }}>Rôle</label>
+                  <div style={{ 
+                    padding: '12px', 
+                    background: 'rgba(22, 33, 62, 0.5)', 
+                    borderRadius: '8px',
+                    color: userProfile.authority === 'ADMIN' ? '#f72585' : '#4cc9f0'
+                  }}>
+                    {userProfile.authority === 'ADMIN' ? 'Administrateur' : 'Utilisateur'}
                   </div>
                 </div>
               </div>
@@ -259,7 +406,7 @@ const ProfilePage = () => {
                   margin: '0 auto 25px',
                   fontSize: '3rem',
                 }}>
-                  JD
+                  {userProfile.username ? userProfile.username.charAt(0).toUpperCase() : '?'}
                 </div>
                 
                 <button 
@@ -277,7 +424,7 @@ const ProfilePage = () => {
           </div>
         )}
 
-        {}
+        {/* Onglet Email */}
         {activeTab === 'email' && (
           <div style={cardStyle}>
             <h2 style={{ fontSize: '1.8rem', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -442,16 +589,21 @@ const ProfilePage = () => {
                       justifyContent: 'center',
                       fontSize: '1.2rem',
                     }}>
-                      {user.name.charAt(0)}
+                      {user.username.charAt(0).toUpperCase()}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 'bold' }}>{user.name}</div>
+                      <div style={{ fontWeight: 'bold' }}>{user.username}</div>
                       <div style={{ fontSize: '0.9rem', color: '#aaa' }}>
-                        {user.mutualFriends} ami{user.mutualFriends > 1 ? 's' : ''} en commun
+                        {user.email}
                       </div>
+                      {user.mutualFriends !== undefined && (
+                        <div style={{ fontSize: '0.9rem', color: '#aaa' }}>
+                          {user.mutualFriends} ami{user.mutualFriends !== 1 ? 's' : ''} en commun
+                        </div>
+                      )}
                     </div>
                     <button 
-                      onClick={() => sendFriendRequest(user.id)}
+                      onClick={() => handleSendFriendRequest(user.id)}
                       style={{ 
                         background: 'rgba(76, 240, 110, 0.2)', 
                         border: '1px solid rgba(76, 240, 110, 0.5)',
@@ -470,86 +622,7 @@ const ProfilePage = () => {
                 ))}
               </div>
             </div>
-            
-            {
-            }
-            <div style={{ marginBottom: '30px' }}>
-              <h3 style={{ fontSize: '1.4rem', marginBottom: '15px' }}>Demandes d'amis ({friendRequests.length})</h3>
-              
-              {friendRequests.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#aaa' }}>
-                  Aucune demande d'ami en attente
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
-                  {friendRequests.map(request => (
-                    <div key={request.id} style={{ 
-                      background: 'rgba(22, 33, 62, 0.5)', 
-                      padding: '15px', 
-                      borderRadius: '10px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '15px'
-                    }}>
-                      <div style={{ 
-                        width: '40px', 
-                        height: '40px', 
-                        borderRadius: '50%', 
-                        background: 'linear-gradient(45deg, #f72585, #b5179e)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '1.2rem',
-                      }}>
-                        {request.name.charAt(0)}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 'bold' }}>{request.name}</div>
-                        <div style={{ fontSize: '0.9rem', color: '#aaa' }}>
-                          {request.mutualFriends} ami{request.mutualFriends > 1 ? 's' : ''} en commun
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '5px' }}>
-                        <button 
-                          onClick={() => acceptFriendRequest(request.id)}
-                          style={{ 
-                            background: 'rgba(76, 240, 110, 0.2)', 
-                            border: '1px solid rgba(76, 240, 110, 0.5)',
-                            borderRadius: '50%',
-                            width: '35px',
-                            height: '35px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <FiCheck style={{ color: '#4cf06e' }} />
-                        </button>
-                        <button 
-                          onClick={() => declineFriendRequest(request.id)}
-                          style={{ 
-                            background: 'rgba(247, 37, 133, 0.2)', 
-                            border: '1px solid rgba(247, 37, 133, 0.5)',
-                            borderRadius: '50%',
-                            width: '35px',
-                            height: '35px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <FiX style={{ color: '#f72585' }} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            {}
+            {/* Mes amis */}
             <div>
               <h3 style={{ fontSize: '1.4rem', marginBottom: '15px' }}>Mes amis ({friends.length})</h3>
               
@@ -574,10 +647,10 @@ const ProfilePage = () => {
                       justifyContent: 'center',
                       fontSize: '1.2rem',
                     }}>
-                      {friend.name.charAt(0)}
+                      {friend.username.charAt(0).toUpperCase()}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 'bold' }}>{friend.name}</div>
+                      <div style={{ fontWeight: 'bold' }}>{friend.username}</div>
                       <div style={{ fontSize: '0.9rem', color: friend.online ? '#4cf06e' : '#aaa' }}>
                         {friend.online ? 'En ligne' : 'Hors ligne'}
                       </div>
@@ -601,8 +674,8 @@ const ProfilePage = () => {
           </div>
         )}
 
-        {}
-        {activeTab === 'stats' && (
+        {/* Onglet Stats */}
+        {activeTab === 'stats' && stats && (
           <div style={cardStyle}>
             <h2 style={{ fontSize: '1.8rem', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <FiBarChart2 /> Statistiques de jeu
@@ -614,7 +687,7 @@ const ProfilePage = () => {
               gap: '25px',
               marginBottom: '30px'
             }}>
-              {}
+              {/* Performances globales */}
               <div style={{ 
                 background: 'rgba(22, 33, 62, 0.5)', 
                 borderRadius: '15px', 
@@ -652,7 +725,7 @@ const ProfilePage = () => {
                 </div>
               </div>
               
-              {}
+              {/* Détails par jeu */}
               <div style={{ 
                 background: 'rgba(22, 33, 62, 0.5)', 
                 borderRadius: '15px', 
@@ -667,7 +740,7 @@ const ProfilePage = () => {
                   return (
                     <div key={index} style={{ marginBottom: '25px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                        <span style={{ fontWeight: 'bold' }}>{game.name}</span>
+                        <span style={{ fontWeight: 'bold' }}>{game.game}</span>
                         <span style={{ color: winRate >= 50 ? '#4cf06e' : '#f72585' }}>
                           {winRate}% de victoires
                         </span>
@@ -697,7 +770,7 @@ const ProfilePage = () => {
                       }}>
                         <div>{game.played} parties</div>
                         <div>{game.won} victoires</div>
-                        <div>{game.played - game.won} défaites</div>
+                        <div>{game.lost} défaites</div>
                       </div>
                     </div>
                   );
@@ -705,7 +778,7 @@ const ProfilePage = () => {
               </div>
             </div>
 
-            {}
+            {/* Historique des parties */}
             <div>
               <h3 style={{ fontSize: '1.4rem', marginBottom: '20px', color: '#4cc9f0' }}>
                 Historique des parties
@@ -746,9 +819,9 @@ const ProfilePage = () => {
                               justifyContent: 'center',
                               fontSize: '0.9rem',
                             }}>
-                              {match.opponent.charAt(0)}
+                              {match.opponentName.charAt(0).toUpperCase()}
                             </div>
-                            {match.opponent}
+                            {match.opponentName}
                           </div>
                         </td>
                       </tr>

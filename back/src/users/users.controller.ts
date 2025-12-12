@@ -12,6 +12,8 @@ import {
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateEmailDto } from './dto/update-email.dto';
+import { UpdatePasswordDto } from './dto/update-password.dto';
 import { FindAllUsersDto } from './dto/find-all-users.dto';
 import { Roles } from 'src/decorators/roles.decorator';
 import { AuthorityEnum } from './enums/authority.enum';
@@ -40,10 +42,63 @@ export class UsersController {
     return this.usersService.findAll(findAllUsersDto);
   }
 
+  // GET /users/me must be BEFORE /users/:id to avoid matching "me" as an id
+  @Get('me')
+  @Roles(AuthorityEnum.NORMAL)
+  getMe(@Req() request: RequestWithUser) {
+    return this.usersService.findOnePublic(request.user.id);
+  }
+
+  @Get('search')
+  @Roles(AuthorityEnum.NORMAL)
+  searchUsers(@Query('q') query: string) {
+    return this.usersService.searchUsers(query);
+  }
+
   @Get(':id')
   @Roles(AuthorityEnum.NORMAL)
   findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+    return this.usersService.findOnePublic(id);
+  }
+
+  // Friends APIs expected by front
+  @Get(':id/friends')
+  @Roles(AuthorityEnum.NORMAL)
+  getFriends(@Param('id') id: string) {
+    return this.usersService.getFriends(id);
+  }
+
+  @Get(':id/friend-requests')
+  @Roles(AuthorityEnum.NORMAL)
+  getFriendRequests(@Param('id') id: string) {
+    return this.usersService.getFriendRequests(id);
+  }
+
+  @Post(':id/friend-requests/:targetId')
+  @Roles(AuthorityEnum.NORMAL)
+  sendFriendRequest(
+    @Param('id') id: string,
+    @Param('targetId') targetId: string,
+  ) {
+    return this.usersService.sendFriendRequest(id, targetId);
+  }
+
+  @Post(':id/friend-requests/:requestId/accept')
+  @Roles(AuthorityEnum.NORMAL)
+  acceptFriendRequest(
+    @Param('id') id: string,
+    @Param('requestId') requestId: string,
+  ) {
+    return this.usersService.acceptFriendRequest(id, requestId);
+  }
+
+  @Post(':id/friend-requests/:requestId/decline')
+  @Roles(AuthorityEnum.NORMAL)
+  declineFriendRequest(
+    @Param('id') id: string,
+    @Param('requestId') requestId: string,
+  ) {
+    return this.usersService.declineFriendRequest(id, requestId);
   }
 
   @Patch(':id')
@@ -59,6 +114,39 @@ export class UsersController {
     @Body() updateUserDto: UpdateUserDto,
   ) {
     return this.usersService.update(request.user.id, updateUserDto);
+  }
+
+  @Patch('me/email')
+  @Roles(AuthorityEnum.NORMAL)
+  updateMyEmail(
+    @Req() request: RequestWithUser,
+    @Body() updateEmailDto: UpdateEmailDto,
+  ) {
+    return this.usersService.updateEmail(
+      request.user.id,
+      updateEmailDto.email,
+      updateEmailDto.currentPassword,
+    );
+  }
+
+  @Patch('me/password')
+  @Roles(AuthorityEnum.NORMAL)
+  updateMyPassword(
+    @Req() request: RequestWithUser,
+    @Body() updatePasswordDto: UpdatePasswordDto,
+  ) {
+    return this.usersService.updatePassword(
+      request.user.id,
+      updatePasswordDto.currentPassword,
+      updatePasswordDto.newPassword,
+    );
+  }
+
+  // Stats API expected by front
+  @Get(':id/stats')
+  @Roles(AuthorityEnum.NORMAL)
+  getUserStats(@Param('id') id: string) {
+    return this.usersService.getUserStats(id);
   }
 
   @Delete(':id')
