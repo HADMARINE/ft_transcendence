@@ -82,10 +82,11 @@ const ProfilePage = () => {
 
   // Listen for user status updates via websocket
   useEffect(() => {
-    if (!gameData?.client) return;
+    if (!gameData?.client || !userId) {
+      return;
+    }
 
-    const handleStatusUpdate = (data: { userId: string; status: string; currentGameId?: string }) => {
-      console.log("Status update received:", data);
+    const handleStatusUpdate = (data: { userId: string; status: 'offline' | 'online' | 'in_game' }) => {
       // Reload friends when any user status changes
       if (activeTab === 'friends') {
         loadFriends();
@@ -97,7 +98,7 @@ const ProfilePage = () => {
     return () => {
       gameData.client?.off("user-status-updated", handleStatusUpdate);
     };
-  }, [gameData?.client, activeTab]);
+  }, [gameData?.client, activeTab, userId]);
   
   async function loadFriends() {
     if (!userId) return;

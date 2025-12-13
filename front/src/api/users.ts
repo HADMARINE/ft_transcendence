@@ -73,12 +73,11 @@ export async function updateUserProfile(
 }
 
 export async function updateUserStatus(
-  status: 'online' | 'offline' | 'in_game',
-  currentGameId?: string
+  status: 'online' | 'offline' | 'in_game'
 ): Promise<{ success: boolean; status?: string }> {
   const result = await client.patch<{ success: boolean; status?: string }>(
     '/users/me/status',
-    { status, currentGameId }
+    { status }
   );
   
   if (result.result === true && result.data) {

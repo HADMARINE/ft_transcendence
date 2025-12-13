@@ -104,7 +104,7 @@ export class GameSessionGateway
   @SubscribeMessage('user-status-changed')
   userStatusChanged(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { status: string; currentGameId?: string },
+    @MessageBody() data: { status: 'offline' | 'online' | 'in_game' },
   ) {
     this.gameSessionService.userStatusChanged(client, data);
   }

@@ -3,6 +3,7 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { GameDataProvider } from "@/util/useGameData";
+import { RouteStatusTracker } from "@/components/RouteStatusTracker";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -15,6 +16,7 @@ export default function RootLayout({
     <html lang="fr">
       <body className={inter.className}>
         <GameDataProvider>
+          <RouteStatusTracker />
           {children}
         </GameDataProvider>
       </body>

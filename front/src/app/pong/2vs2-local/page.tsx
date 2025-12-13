@@ -152,8 +152,6 @@ const styles = {
 };
 
 const Pong4Players = () => {
-  useGameStatus("pong_2vs2_local");
-
   const [gameOver, setGameOver] = useState(false);
   const [gameConfig, setGameConfig] = useState(null);
   const [gameStarted, setGameStarted] = useState(false);

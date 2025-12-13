@@ -1,47 +1,38 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { updateUserStatus } from "@/api/users";
 import { useGameData } from "./useGameData";
 
 /**
- * Marks the current user as in_game with a specific mode identifier
- * while the component using this hook is mounted.
+ * Marks the current user as in_game while the component using this hook is mounted.
  * Also notifies connected websocket clients of the status change.
  */
-export function useGameStatus(currentGameId: string) {
-  const gameData = useGameData();
-
+export function useGameStatus() {
+  const { client } = useGameData();
+  const hasSetStatusRef = useRef(false);
+  
   useEffect(() => {
-    (async () => {
+    // Only run once per mount
+    if (hasSetStatusRef.current) return;
+    hasSetStatusRef.current = true;
+
+    // Set status to in_game
+    const setInGame = async () => {
       try {
-        await updateUserStatus("in_game", currentGameId);
-        // Notify other clients via websocket
-        if (gameData?.client) {
-          gameData.client.emit("user-status-changed", {
+        await updateUserStatus("in_game");
+        
+        // Notify other clients via websocket if connected
+        if (client?.connected) {
+          client.emit("user-status-changed", {
             status: "in_game",
-            currentGameId,
           });
         }
-      } catch {
-        // Ignore when not authenticated.
+      } catch (err) {
+        console.error("Failed to update status to in_game:", err);
       }
-    })();
-
-    return () => {
-      (async () => {
-        try {
-          await updateUserStatus("online");
-          // Notify other clients via websocket
-          if (gameData?.client) {
-            gameData.client.emit("user-status-changed", {
-              status: "online",
-            });
-          }
-        } catch {
-          // Ignore
-        }
-      })();
     };
-  }, [currentGameId, gameData?.client]);
+
+    setInGame();
+  }, []); // Empty dependency array - run once on mount
 }

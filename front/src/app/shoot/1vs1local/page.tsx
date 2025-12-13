@@ -5,11 +5,8 @@ import React, { useEffect, useState } from 'react';
 import GameCustomisation from './GameCustomisation';
 import GameLocal from './game/page';
 import { useSearchParams } from 'next/navigation';
-import { useGameStatus } from "@/util/useGameStatus";
 
 export default function HomePage() {
-  useGameStatus("shoot_1vs1_local");
-
   const [gameStarted, setGameStarted] = useState(false);
   const [gameConfig, setGameConfig] = useState({
     mapId: 'map1',

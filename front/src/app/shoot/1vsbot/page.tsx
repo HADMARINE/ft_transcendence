@@ -4,12 +4,10 @@
 import React, { useEffect, useState } from 'react';
 import GameCustomisation from './GameCustomisation';
 import GameLocal from './game/page';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useGameStatus } from "@/util/useGameStatus";
+import { useSearchParams } from 'next/navigation';
 
 export default function BotGamePage() {
   const router = useRouter();
-  useGameStatus("shoot_vs_bot");
 
   const [gameStarted, setGameStarted] = useState(false);
   const [gameConfig, setGameConfig] = useState({

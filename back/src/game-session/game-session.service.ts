@@ -654,16 +654,20 @@ export class GameSessionService {
 
   async userStatusChanged(
     client: Socket,
-    data: { status: string; currentGameId?: string },
+    data: { status: 'offline' | 'online' | 'in_game' },
   ) {
     const user = client.handshake.auth.user as User;
-    if (!user?.id) return;
+    if (!user?.id) {
+      return;
+    }
+
+    // Update user status in database
+    await this.usersService.updateUserStatus(user.id, data.status);
 
     // Broadcast status change to all connected clients so they see it in friends list
     this.server.emit('user-status-updated', {
       userId: user.id,
       status: data.status,
-      currentGameId: data.currentGameId,
     });
   }
 }
