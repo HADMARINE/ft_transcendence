@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiUser, FiMail, FiLock, FiUsers, FiUserPlus, FiSettings, FiCheck, FiX, FiBarChart2 } from 'react-icons/fi';
-import { getCurrentUser, updateUserEmail, updateUserPassword, updateUserStatus, UserProfile } from '../../api/users';
+import { getCurrentUser, updateUserEmail, updateUserPassword, updateUserStatus, updateUserProfile, updateUserNickname, UserProfile } from '../../api/users';
 import { getFriends, getFriendRequests, searchUsers, sendFriendRequest, acceptFriendRequest, declineFriendRequest, SearchResult, FriendRequest as ApiFriendRequest, Friend } from '../../api/friends';
 import { getUserStats, UserStats } from '../../api/stats';
 import { logout as logoutApi } from '../../api/auth';
@@ -21,6 +21,8 @@ const ProfilePage = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [email, setEmail] = useState('');
   const [newEmail, setNewEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [newUsername, setNewUsername] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -47,6 +49,7 @@ const ProfilePage = () => {
         setUserId(profile.id);
         setUserProfile(profile);
         setEmail(profile.email);
+        setUsername(profile.username);
         // Set status to online when user opens settings
         await updateUserStatus('online');
       } else {
@@ -182,6 +185,33 @@ const ProfilePage = () => {
       }
     } catch (error) {
       console.error('Error updating password:', error);
+      alert('Une erreur est survenue');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUsernameChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId || !newUsername) return;
+    
+    setIsLoading(true);
+    try {
+      const result = await updateUserNickname(newUsername);
+      if (result.success) {
+        setUsername(newUsername);
+        setNewUsername('');
+        if (result.user) {
+          setUserProfile(result.user);
+        }
+        alert('Nom d\'utilisateur mis à jour avec succès!');
+        // Reload current user to sync everything
+        await loadCurrentUser();
+      } else {
+        alert(`Erreur: ${result.message || 'Échec de la mise à jour'}`);
+      }
+    } catch (error) {
+      console.error('Error updating username:', error);
       alert('Une erreur est survenue');
     } finally {
       setIsLoading(false);
@@ -386,6 +416,16 @@ const ProfilePage = () => {
           <button 
             style={{ 
               ...buttonStyle, 
+              background: activeTab === 'username' ? 'rgba(76, 240, 200, 0.3)' : 'rgba(76, 240, 200, 0.1)',
+              padding: '10px 20px',
+            }}
+            onClick={() => setActiveTab('username')}
+          >
+            <FiUser /> Changer le pseudo
+          </button>
+          <button 
+            style={{ 
+              ...buttonStyle, 
               background: activeTab === 'email' ? 'rgba(247, 37, 133, 0.3)' : 'rgba(247, 37, 133, 0.1)',
               padding: '10px 20px',
             }}
@@ -488,6 +528,46 @@ const ProfilePage = () => {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Onglet Username */}
+        {activeTab === 'username' && (
+          <div style={cardStyle}>
+            <h2 style={{ fontSize: '1.8rem', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <FiUser /> Changer le nom d'utilisateur
+            </h2>
+            
+            <div style={{ marginBottom: '20px', padding: '15px', background: 'rgba(76, 240, 200, 0.1)', borderRadius: '10px' }}>
+              <p><strong>Pseudo actuel:</strong> {username}</p>
+            </div>
+            
+            <form onSubmit={handleUsernameChange}>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', color: '#4cf0c8' }}>Nouveau nom d'utilisateur</label>
+                <input
+                  type="text"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  required
+                  style={inputStyle}
+                  placeholder="Entrez votre nouveau nom d'utilisateur"
+                />
+              </div>
+              
+              <button 
+                type="submit" 
+                style={{ 
+                  ...buttonStyle,
+                  background: 'linear-gradient(45deg, #4cf0c8, #00d9ff)',
+                  opacity: isLoading ? 0.7 : 1,
+                  cursor: isLoading ? 'not-allowed' : 'pointer'
+                }}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Traitement en cours...' : 'Mettre à jour mon pseudo'}
+              </button>
+            </form>
           </div>
         )}
 

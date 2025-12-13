@@ -57,6 +57,21 @@ export async function updateUserPassword(
   }
 }
 
+export async function updateUserNickname(
+  nickname: string
+): Promise<{ success: boolean; user?: UserProfile; message?: string }> {
+  const result = await client.patch<UserProfile>(`/users/me`, { nickname });
+  
+  if (result.result === true) {
+    return { success: true, user: result.data };
+  } else {
+    return { 
+      success: false, 
+      message: result.data?.message || "Failed to update nickname" 
+    };
+  }
+}
+
 export async function updateUserProfile(
   data: Partial<UserProfile>
 ): Promise<{ success: boolean; user?: UserProfile; message?: string }> {

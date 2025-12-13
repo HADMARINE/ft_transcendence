@@ -56,6 +56,12 @@ export class UsersController {
     return this.usersService.searchUsers(query);
   }
 
+  @Get(':id/stats')
+  @Roles(AuthorityEnum.NORMAL)
+  getUserStats(@Param('id') id: string) {
+    return this.usersService.getUserStats(id);
+  }
+
   @Get(':id')
   @Roles(AuthorityEnum.NORMAL)
   findOne(@Param('id') id: string) {
@@ -108,15 +114,6 @@ export class UsersController {
     return this.usersService.update(id, updateUserDto);
   }
 
-  @Patch('me')
-  @Roles(AuthorityEnum.NORMAL)
-  updateMe(
-    @Req() request: RequestWithUser,
-    @Body() updateUserDto: UpdateUserDto,
-  ) {
-    return this.usersService.update(request.user.id, updateUserDto);
-  }
-
   @Patch('me/email')
   @Roles(AuthorityEnum.NORMAL)
   updateMyEmail(
@@ -143,13 +140,6 @@ export class UsersController {
     );
   }
 
-  // Stats API expected by front
-  @Get(':id/stats')
-  @Roles(AuthorityEnum.NORMAL)
-  getUserStats(@Param('id') id: string) {
-    return this.usersService.getUserStats(id);
-  }
-
   @Patch('me/status')
   @Roles(AuthorityEnum.NORMAL)
   updateMyStatus(
@@ -161,6 +151,15 @@ export class UsersController {
       updateStatusDto.status,
       updateStatusDto.currentGameId,
     );
+  }
+
+  @Patch('me')
+  @Roles(AuthorityEnum.NORMAL)
+  updateMe(
+    @Req() request: RequestWithUser,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return this.usersService.update(request.user.id, updateUserDto);
   }
 
   @Delete(':id')
