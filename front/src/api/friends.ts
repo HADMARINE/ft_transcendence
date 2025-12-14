@@ -93,3 +93,19 @@ export async function declineFriendRequest(
     };
   }
 }
+
+export async function removeFriend(
+  userId: string,
+  friendId: string
+): Promise<{ success: boolean; message?: string }> {
+  const result = await client.delete(`/users/${userId}/friends/${friendId}`);
+  
+  if (result.result === true) {
+    return { success: true };
+  } else {
+    return { 
+      success: false, 
+      message: result.data?.message || "Failed to remove friend" 
+    };
+  }
+}

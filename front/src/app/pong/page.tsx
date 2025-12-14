@@ -197,8 +197,9 @@ const styles = {
 
 export default function PongModesPage() {
   const router = useRouter();
-  const [showMatchmakingPopup, setShowMatchmakingPopup] = useState(false);
 
+  const [showQueueModal, setShowQueueModal] = useState(false);
+  const [queuePlayerCount, setQueuePlayerCount] = useState(0);
   const [balls] = useState(() => {
     return Array.from({ length: 15 }, (_, i) => ({
       id: i,
@@ -212,19 +213,57 @@ export default function PongModesPage() {
   const gameData = useGameData();
 
   useEffect(() => {
-    gameData.assureConnection();
-    if (!showMatchmakingPopup) {
-      gameData.unregisterQueue();
-      return;
-    }
-    gameData.registerQueue(GametypeEnum.PONG);
-  }, [showMatchmakingPopup]);
-
-  useEffect(() => {
     if (gameData.status === IngameStatus.WAITING_FOR_PLAYERS) {
       router.replace("/pong/1vs1-online/lobby");
     }
   }, [gameData.status]);
+
+  // Écouter lobby-created pour rediriger vers le lobby
+  useEffect(() => {
+    if (!gameData.client) return;
+
+    const handleLobbyCreated = (data: { roomId: string; gametype: string; players: any[]; timeRemaining: number }) => {
+      console.log("=== LOBBY CREATED ===", data);
+      setShowQueueModal(false);
+      // Stocker les données du lobby dans sessionStorage
+      sessionStorage.setItem('lobbyData', JSON.stringify(data));
+      router.push(`/pong/1vs1-online/lobby?roomId=${data.roomId}`);
+    };
+
+    const handleLobbyUpdated = (data: { roomId: string; players: any[]; timeRemaining: number }) => {
+      console.log("=== LOBBY UPDATED ===", data);
+      // Si on est toujours sur cette page, rediriger vers le lobby
+      if (showQueueModal) {
+        setShowQueueModal(false);
+        sessionStorage.setItem('lobbyData', JSON.stringify(data));
+        router.push(`/pong/1vs1-online/lobby?roomId=${data.roomId}`);
+      }
+    };
+
+    gameData.client.on("lobby-created", handleLobbyCreated);
+    gameData.client.on("lobby-updated", handleLobbyUpdated);
+
+    return () => {
+      gameData.client?.off("lobby-created", handleLobbyCreated);
+      gameData.client?.off("lobby-updated", handleLobbyUpdated);
+    };
+  }, [gameData.client, router, showQueueModal]);
+
+  // Écouter lobby-update pour le compteur de joueurs dans la queue
+  useEffect(() => {
+    if (!gameData.client || !showQueueModal) return;
+
+    const handleLobbyUpdate = (lobbyData: any) => {
+      setQueuePlayerCount(lobbyData.playerCount || 0);
+    };
+
+    gameData.client.on("lobby-update", handleLobbyUpdate);
+
+    return () => {
+      gameData.client?.off("lobby-update", handleLobbyUpdate);
+    };
+  }, [gameData.client, showQueueModal]);
+
 
   const gameModes = [
     {
@@ -257,9 +296,19 @@ export default function PongModesPage() {
     },
   ];
 
-  const handleModeClick = (mode: any) => {
+  const handleModeClick = async (mode: any) => {
     if (mode.isOnline) {
-      setShowMatchmakingPopup(true);
+      console.log("🎮 1vs1 Online clicked - starting queue registration");
+      console.log("  gameData.client:", gameData.client);
+      console.log("  gameData.client?.connected:", gameData.client?.connected);
+      
+      await gameData.assureConnection();
+      console.log("  After assureConnection, client:", gameData.client);
+      
+      gameData.registerQueue(GametypeEnum.PONG);
+      console.log("  registerQueue called");
+      
+      setShowQueueModal(true);
     } else {
       router.push(mode.path);
     }
@@ -322,29 +371,31 @@ export default function PongModesPage() {
         />
       ))}
 
-      {/* Popup de recherche d'adversaire */}
-      {showMatchmakingPopup && (
+      {/* Queue Modal */}
+      {showQueueModal && (
         <div style={styles.popupOverlay as React.CSSProperties}>
           <div style={styles.popupContent as React.CSSProperties}>
             <h2 style={styles.popupTitle as React.CSSProperties}>
-              Recherche d'adversaire...
+              En File d'Attente
             </h2>
             <div style={styles.loadingContainer as React.CSSProperties}>
-              {gameData.registerQueueStatus == RegisterQueueStatus.REGISTERED &&
-                !gameData.status && (
-                  <p style={styles.loadingText as React.CSSProperties}>
-                    En attente d'un adversaire
-                    <span
-                      style={styles.dotsAnimation as React.CSSProperties}
-                      className="dots"
-                    ></span>
-                  </p>
-                )}
+              {/* Roue qui tourne améliorée */}
+              <div className="spinner-container">
+                <div className="spinner-wheel"></div>
+              </div>
+              <p style={styles.loadingText as React.CSSProperties}>
+                Joueurs en attente: <strong>{queuePlayerCount}</strong>
+              </p>
+              <p className="searching-text">
+                En recherche d'adversaire<span className="dots"></span>
+              </p>
             </div>
-
             <button
               style={styles.cancelButton as React.CSSProperties}
-              onClick={() => setShowMatchmakingPopup(false)}
+              onClick={() => {
+                setShowQueueModal(false);
+                gameData.unregisterQueue();
+              }}
             >
               Annuler
             </button>
@@ -386,6 +437,43 @@ export default function PongModesPage() {
           100% {
             transform: rotate(360deg);
           }
+        }
+
+        /* Roue qui tourne améliorée */
+        .spinner-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin: 20px 0 30px 0;
+        }
+
+        .spinner-wheel {
+          width: 80px;
+          height: 80px;
+          border-radius: 50%;
+          border: 5px solid rgba(76, 201, 240, 0.2);
+          border-top: 5px solid #4cc9f0;
+          border-right: 5px solid #f72585;
+          animation: spin 1s linear infinite;
+          box-shadow: 0 0 20px rgba(76, 201, 240, 0.4);
+        }
+
+        @keyframes pulse-icon {
+          0%, 100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.1);
+            opacity: 0.7;
+          }
+        }
+
+        .searching-text {
+          font-size: 1.2rem;
+          color: #e6e6e6;
+          margin-top: 10px;
+          text-align: center;
         }
 
         /* Animation des points */

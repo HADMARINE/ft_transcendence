@@ -239,6 +239,39 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("User status updated:", data);
     });
 
+    // Événements du nouveau système de lobby dynamique
+    client.on("lobby-created", (data: { roomId: string; gametype: string; players: any[]; timeRemaining: number }) => {
+      console.log("=== LOBBY-CREATED EVENT IN PROVIDER ===", data);
+      sessionStorage.setItem('lobbyData', JSON.stringify(data));
+      window.dispatchEvent(new CustomEvent('lobby-created', { detail: data }));
+    });
+
+    client.on("lobby-updated", (data: { roomId: string; players: any[]; timeRemaining: number }) => {
+      console.log("=== LOBBY-UPDATED EVENT IN PROVIDER ===", data);
+      window.dispatchEvent(new CustomEvent('lobby-updated', { detail: data }));
+    });
+
+    client.on("lobby-countdown", (data: { roomId: string; timeRemaining: number; playerCount: number }) => {
+      console.log("Lobby countdown:", data.timeRemaining);
+      window.dispatchEvent(new CustomEvent('lobby-countdown', { detail: data }));
+    });
+
+    client.on("tournament-starting", (data: { roomId: string; format: string; players: any[]; brackets: string[][] }) => {
+      console.log("=== TOURNAMENT-STARTING EVENT IN PROVIDER ===", data);
+      window.dispatchEvent(new CustomEvent('tournament-starting', { detail: data }));
+    });
+
+    client.on("match-config", (data: any) => {
+      console.log("🎮 === MATCH-CONFIG EVENT IN PROVIDER === socket received event", data);
+      console.log("🎮 Dispatching custom event 'match-config'");
+      window.dispatchEvent(new CustomEvent('match-config', { detail: data }));
+    });
+
+    client.on("lobby-cancelled", (data: { reason: string }) => {
+      console.log("=== LOBBY-CANCELLED EVENT IN PROVIDER ===", data);
+      window.dispatchEvent(new CustomEvent('lobby-cancelled', { detail: data }));
+    });
+
     return () => {
       console.log("Cleaning up socket connection...");
       client.removeAllListeners();
@@ -267,9 +300,88 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const registerQueue = (gametype: GametypeEnum) => {
-    if (clientRef.current && clientRef.current.connected) {
-      clientRef.current.emit("register-queue", { gametype });
+    const client = clientRef.current;
+    
+    const emitRegister = (socket: Socket) => {
+      console.log("Emitting register-queue with gametype:", gametype);
+      socket.emit("register-queue", { gametype });
+    };
+
+    if (client) {
+      if (client.connected) {
+        console.log("Client connected, emitting now");
+        emitRegister(client);
+      } else {
+        console.log("Client exists but not connected, waiting for connection...");
+        const onConnect = () => {
+          console.log("Client now connected, emitting register-queue");
+          emitRegister(client);
+          client.off("connect", onConnect);
+        };
+        client.on("connect", onConnect);
+        client.connect();
+      }
+      return;
     }
+
+    // Client doesn't exist yet, initialize it now
+    console.log("No client available, initializing socket...");
+    const token = localStorage.getItem("token") || undefined;
+    const newClient = io(
+      process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000",
+      {
+        autoConnect: true,
+        transports: ["websocket"],
+        withCredentials: true,
+        auth: token ? { Authorization: token } : {},
+      }
+    );
+    clientRef.current = newClient;
+
+    // Ajouter les listeners essentiels sur le nouveau socket
+    newClient.on("lobby-created", (data: { roomId: string; gametype: string; players: any[]; timeRemaining: number }) => {
+      console.log("=== LOBBY-CREATED (new socket) ===", data);
+      sessionStorage.setItem('lobbyData', JSON.stringify(data));
+      window.dispatchEvent(new CustomEvent('lobby-created', { detail: data }));
+    });
+
+    newClient.on("lobby-updated", (data: { roomId: string; players: any[]; timeRemaining: number }) => {
+      console.log("=== LOBBY-UPDATED (new socket) ===", data);
+      window.dispatchEvent(new CustomEvent('lobby-updated', { detail: data }));
+    });
+
+    newClient.on("lobby-countdown", (data: { roomId: string; timeRemaining: number; playerCount: number }) => {
+      window.dispatchEvent(new CustomEvent('lobby-countdown', { detail: data }));
+    });
+
+    newClient.on("tournament-starting", (data: any) => {
+      console.log("=== TOURNAMENT-STARTING (new socket) ===", data);
+      window.dispatchEvent(new CustomEvent('tournament-starting', { detail: data }));
+    });
+
+    newClient.on("lobby-cancelled", (data: { reason: string }) => {
+      window.dispatchEvent(new CustomEvent('lobby-cancelled', { detail: data }));
+    });
+
+    newClient.on("register-queue", (data: RegisterQueueStatus) => {
+      console.log("Register Queue Status (new socket):", data);
+      setRegisterQueueStatus(data);
+    });
+
+    newClient.on("lobby-update", (data: any) => {
+      console.log("Lobby update (new socket):", data);
+    });
+
+    newClient.on("connect", () => {
+      console.log("New client connected, emitting register-queue");
+      setIsConnected(true);
+      emitRegister(newClient);
+    });
+
+    newClient.on("disconnect", () => {
+      console.log("New client disconnected");
+      setIsConnected(false);
+    });
   };
 
   const unregisterQueue = () => {

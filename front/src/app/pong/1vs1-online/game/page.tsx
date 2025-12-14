@@ -1,15 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import dynamic from "next/dynamic";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useGameData } from "@/util/useGameData";
-
-const ConfigScreen = dynamic(() => import("../Config/page"), { ssr: false });
 
 const styles = {
   container: {
     display: "flex",
-    flexDirection: "column",
+    flexDirection: "column" as const,
     alignItems: "center",
     justifyContent: "center",
     minHeight: "100vh",
@@ -17,7 +15,7 @@ const styles = {
     color: "#e6e6e6",
     fontFamily: "Arial, sans-serif",
     padding: "20px",
-    position: "relative",
+    position: "relative" as const,
   },
   title: {
     fontSize: "2.5rem",
@@ -26,463 +24,277 @@ const styles = {
     textShadow: "0 0 10px rgba(76, 201, 240, 0.7)",
   },
   gameContainer: {
-    position: "relative",
+    position: "relative" as const,
     margin: "0 auto",
     border: "3px solid #4cc9f0",
     borderRadius: "5px",
     boxShadow: "0 0 20px rgba(76, 201, 240, 0.5)",
     overflow: "hidden",
   },
-  field: {
-    width: "100%",
-    height: "100%",
+  canvas: {
+    display: "block",
     backgroundColor: "#16213e",
-    position: "relative",
   },
-  centerLine: {
-    position: "absolute",
-    top: 0,
-    left: "50%",
-    width: "2px",
-    height: "100%",
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    transform: "translateX(-1px)",
-  },
-  paddle: {
-    position: "absolute",
-    width: "15px",
-    borderRadius: "4px",
-    boxShadow: "0 0 10px rgba(76, 201, 240, 0.7)",
-  },
-  ball: {
-    position: "absolute",
-    borderRadius: "50%",
-    boxShadow: "0 0 10px rgba(247, 37, 133, 0.7)",
-  },
-  score1: {
-    position: "absolute",
-    top: "20px",
-    left: "40%",
-    fontSize: "4rem",
-    fontWeight: "bold",
-    color: "rgba(255, 255, 255, 0.2)",
-  },
-  score2: {
-    position: "absolute",
-    top: "20px",
-    right: "40%",
-    fontSize: "4rem",
-    fontWeight: "bold",
-    color: "rgba(255, 255, 255, 0.2)",
-  },
-  startScreen: {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    textAlign: "center",
-    backgroundColor: "rgba(26, 26, 46, 0.9)",
-    padding: "30px",
-    borderRadius: "10px",
-    zIndex: 10,
-  },
-  startButton: {
-    padding: "15px 40px",
-    fontSize: "1.2rem",
-    backgroundColor: "#4cc9f0",
-    color: "#16213e",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-    fontWeight: "bold",
-    marginBottom: "20px",
-    transition: "all 0.3s",
-    boxShadow: "0 0 15px rgba(76, 201, 240, 0.5)",
-    "&:hover": {
-      backgroundColor: "#3ab0d0",
-      transform: "scale(1.05)",
-    },
-  },
-  restartButton: {
-    padding: "10px 30px",
-    fontSize: "1rem",
-    backgroundColor: "#f72585",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-    fontWeight: "bold",
-    marginTop: "20px",
-    transition: "all 0.3s",
-    "&:hover": {
-      backgroundColor: "#e01e75",
-      transform: "scale(1.05)",
-    },
-  },
-  instructions: {
-    marginTop: "20px",
-    lineHeight: "1.6",
-  },
-  controlsInfo: {
-    marginTop: "20px",
+  scoreBoard: {
     display: "flex",
     justifyContent: "space-around",
-    width: "800px",
-    padding: "10px",
-    backgroundColor: "rgba(22, 33, 62, 0.7)",
-    borderRadius: "5px",
+    marginBottom: "20px",
+    fontSize: "2rem",
+    fontWeight: "bold" as const,
+  },
+  playerScore: {
+    padding: "10px 30px",
+    backgroundColor: "rgba(22, 33, 62, 0.8)",
+    borderRadius: "10px",
   },
   winnerScreen: {
-    position: "absolute",
+    position: "absolute" as const,
     top: "50%",
     left: "50%",
     transform: "translate(-50%, -50%)",
-    textAlign: "center",
+    textAlign: "center" as const,
     backgroundColor: "rgba(26, 26, 46, 0.95)",
     padding: "40px",
     borderRadius: "10px",
     zIndex: 10,
     boxShadow: "0 0 30px rgba(247, 37, 133, 0.7)",
   },
+  winnerText: {
+    fontSize: "2.5rem",
+    color: "#4cc9f0",
+    marginBottom: "20px",
+  },
+  backButton: {
+    padding: "15px 40px",
+    fontSize: "1.2rem",
+    backgroundColor: "#f72585",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    fontWeight: "bold" as const,
+    marginTop: "20px",
+  },
 };
 
 const PongGame = () => {
-  const [gameOver, setGameOver] = useState(false);
-  const [gameConfig, setGameConfig] = useState(null);
-  const [gameStarted, setGameStarted] = useState(false);
-  const [score, setScore] = useState({ player1: 0, player2: 0 });
-  const [player1Y, setPlayer1Y] = useState(0);
-  const [player2Y, setPlayer2Y] = useState(0);
-  const [ballPosition, setBallPosition] = useState({ x: 0, y: 0 });
-  const [ballVelocity, setBallVelocity] = useState({ x: 5, y: 3 });
-  const [showConfigAfterGame, setShowConfigAfterGame] = useState(false);
-
-  const GAME_WIDTH = 800;
-  const GAME_HEIGHT = 500;
-  const PADDLE_WIDTH = 15;
-  const PADDLE_HEIGHT = 100;
-  const BALL_SIZE = 20;
-
-  const gameData = useGameData(); // Use gameData.gamedata
-
-  const animationFrameRef = useRef();
-  const keysPressed = useRef({
-    w: false,
-    s: false,
-    arrowUp: false,
-    arrowDown: false,
-  });
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const gameData = useGameData();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  const roomId = searchParams.get('roomId');
+  
+  const [gameState, setGameState] = useState<any>(null);
+  const [winner, setWinner] = useState<any>(null);
+  const [myUserId, setMyUserId] = useState<string>('');
+  const keysPressed = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (gameConfig) {
-      setPlayer1Y(GAME_HEIGHT / 2 - PADDLE_HEIGHT / 2);
-      setPlayer2Y(GAME_HEIGHT / 2 - PADDLE_HEIGHT / 2);
-      setBallPosition({
-        x: GAME_WIDTH / 2 - BALL_SIZE / 2,
-        y: GAME_HEIGHT / 2 - BALL_SIZE / 2,
-      });
+    console.log('🎮 === PONG GAME PAGE LOADED ===');
+    console.log('🎮 Room ID:', roomId);
+    console.log('🎮 Client available:', !!gameData.client);
+  }, []);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        setMyUserId(user.id);
+      } catch (e) {
+        console.error('Error parsing user from localStorage:', e);
+      }
     }
-  }, [gameConfig]);
-
-  useEffect(() => {}, [gameData.gamedata]); // @Baptiste Here
+  }, []);
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "w" || e.key === "W") keysPressed.current.w = true;
-      if (e.key === "s" || e.key === "S") keysPressed.current.s = true;
-      if (e.key === "ArrowUp") keysPressed.current.arrowUp = true;
-      if (e.key === "ArrowDown") keysPressed.current.arrowDown = true;
-      if (e.key === " " && !gameStarted && gameConfig) startGame();
+    const client = gameData.client;
+    if (!client || !roomId) return;
+
+    console.log('🎮 Setting up pong game listeners for room:', roomId);
+
+    // Écouter les mises à jour du jeu
+    const handlePongUpdate = (data: any) => {
+      if (data.roomId === roomId) {
+        setGameState(data);
+      }
     };
 
-    const handleKeyUp = (e) => {
-      if (e.key === "w" || e.key === "W") keysPressed.current.w = false;
-      if (e.key === "s" || e.key === "S") keysPressed.current.s = false;
-      if (e.key === "ArrowUp") keysPressed.current.arrowUp = false;
-      if (e.key === "ArrowDown") keysPressed.current.arrowDown = false;
+    // Écouter la fin du jeu
+    const handleGameEnded = (data: any) => {
+      console.log('🏁 Game ended:', data);
+      setWinner(data);
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
+    client.on('pong-update', handlePongUpdate);
+    client.on('game-ended', handleGameEnded);
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+      client.off('pong-update', handlePongUpdate);
+      client.off('game-ended', handleGameEnded);
+    };
+  }, [gameData.client, roomId]);
+
+  // Gestion des touches du clavier
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        keysPressed.current.add(e.key);
       }
     };
-  }, [gameStarted, gameConfig]);
 
-  const startGame = () => {
-    setGameOver(false);
-    setGameStarted(true);
-    setScore({ player1: 0, player2: 0 });
-    resetBall();
-  };
-
-  const resetBall = () => {
-    setBallPosition({
-      x: GAME_WIDTH / 2 - BALL_SIZE / 2,
-      y: GAME_HEIGHT / 2 - BALL_SIZE / 2,
-    });
-    setBallVelocity({
-      x: 7,
-      y: Math.random() * 4 - 2,
-    });
-  };
-
-  const backToConfig = () => {
-    setGameStarted(false);
-    setShowConfigAfterGame(true);
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-  };
-
-  useEffect(() => {
-    if (score.player1 === 5 || score.player2 === 5) {
-      setGameOver(true);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        keysPressed.current.delete(e.key);
       }
-
-      const timer = setTimeout(() => {
-        setGameStarted(false);
-        setShowConfigAfterGame(true);
-      }, 800);
-
-      return () => clearTimeout(timer);
-    }
-  }, [score]);
-
-  useEffect(() => {
-    if (!gameStarted || !gameConfig || gameOver) return;
-
-    const updateGame = () => {
-      if (gameOver) {
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
-        return;
-      }
-      const leftPaddleSpeed = gameConfig.leftPaddleSpeed;
-      const rightPaddleSpeed = gameConfig.rightPaddleSpeed;
-
-      if (keysPressed.current.w && player1Y > 0) {
-        setPlayer1Y((prev) => prev - leftPaddleSpeed);
-      }
-      if (keysPressed.current.s && player1Y < GAME_HEIGHT - PADDLE_HEIGHT) {
-        setPlayer1Y((prev) => prev + leftPaddleSpeed);
-      }
-      if (keysPressed.current.arrowUp && player2Y > 0) {
-        setPlayer2Y((prev) => prev - rightPaddleSpeed);
-      }
-      if (
-        keysPressed.current.arrowDown &&
-        player2Y < GAME_HEIGHT - PADDLE_HEIGHT
-      ) {
-        setPlayer2Y((prev) => prev + rightPaddleSpeed);
-      }
-
-      setBallPosition((prev) => {
-        const newX = prev.x + ballVelocity.x;
-        const newY = prev.y + ballVelocity.y;
-
-        let newVx = ballVelocity.x;
-        let newVy = ballVelocity.y;
-
-        if (newY <= 0) {
-          newVy = Math.abs(newVy);
-        } else if (newY >= GAME_HEIGHT - BALL_SIZE) {
-          newVy = -Math.abs(newVy);
-        }
-
-        if (
-          newX <= PADDLE_WIDTH &&
-          newX + BALL_SIZE >= 0 &&
-          newY + BALL_SIZE >= player1Y &&
-          newY <= player1Y + PADDLE_HEIGHT
-        ) {
-          const hitPosition = (newY + BALL_SIZE / 2 - player1Y) / PADDLE_HEIGHT;
-          const normalizedHit = Math.max(0.1, Math.min(0.9, hitPosition));
-
-          const angle = (normalizedHit - 0.5) * (Math.PI / 2);
-          const speed =
-            Math.sqrt(
-              ballVelocity.x * ballVelocity.x + ballVelocity.y * ballVelocity.y
-            ) + 1;
-
-          newVx = Math.abs(Math.cos(angle)) * speed;
-          newVy = Math.sin(angle) * speed;
-        }
-
-        if (
-          newX + BALL_SIZE >= GAME_WIDTH - PADDLE_WIDTH &&
-          newX <= GAME_WIDTH &&
-          newY + BALL_SIZE >= player2Y &&
-          newY <= player2Y + PADDLE_HEIGHT
-        ) {
-          const hitPosition = (newY + BALL_SIZE / 2 - player2Y) / PADDLE_HEIGHT;
-          const normalizedHit = Math.max(0.1, Math.min(0.9, hitPosition));
-
-          const angle = (normalizedHit - 0.5) * (Math.PI / 2);
-          const speed =
-            Math.sqrt(
-              ballVelocity.x * ballVelocity.x + ballVelocity.y * ballVelocity.y
-            ) + 1;
-
-          newVx = -Math.abs(Math.cos(angle)) * speed;
-          newVy = Math.sin(angle) * speed;
-        }
-
-        if (newVx !== ballVelocity.x || newVy !== ballVelocity.y) {
-          setBallVelocity({ x: newVx, y: newVy });
-        }
-
-        return {
-          x: newX,
-          y: Math.max(0, Math.min(GAME_HEIGHT - BALL_SIZE, newY)),
-        };
-      });
-
-      setBallPosition((prev) => {
-        if (prev.x < -BALL_SIZE) {
-          setScore((prevScore) => ({
-            ...prevScore,
-            player2: prevScore.player2 + 0.5,
-          }));
-          resetBall();
-          return {
-            x: GAME_WIDTH / 2 - BALL_SIZE / 2,
-            y: GAME_HEIGHT / 2 - BALL_SIZE / 2,
-          };
-        } else if (prev.x > GAME_WIDTH) {
-          setScore((prevScore) => ({
-            ...prevScore,
-            player1: prevScore.player1 + 0.5,
-          }));
-          resetBall();
-          return {
-            x: GAME_WIDTH / 2 - BALL_SIZE / 2,
-            y: GAME_HEIGHT / 2 - BALL_SIZE / 2,
-          };
-        }
-        return prev;
-      });
-      if (gameOver) {
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
-        return;
-      }
-      animationFrameRef.current = requestAnimationFrame(updateGame);
     };
 
-    animationFrameRef.current = requestAnimationFrame(updateGame);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  // Envoyer les commandes de mouvement au serveur
+  useEffect(() => {
+    if (!gameData.client || !roomId) return;
+
+    const interval = setInterval(() => {
+      if (keysPressed.current.has('ArrowUp')) {
+        gameData.client.emit('paddle-move', { roomId, direction: 'up' });
+      } else if (keysPressed.current.has('ArrowDown')) {
+        gameData.client.emit('paddle-move', { roomId, direction: 'down' });
+      }
+    }, 16);
+
+    return () => clearInterval(interval);
+  }, [gameData.client, roomId]);
+
+  // Dessiner le jeu sur le canvas
+  useEffect(() => {
+    if (!canvasRef.current || !gameState) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Animation frame pour mettre à jour à 60 FPS (environ toutes les 16ms)
+    let animationFrameId: number;
+
+    const draw = () => {
+      // Nettoyer le canvas
+      ctx.fillStyle = '#16213e';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Ligne centrale
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([10, 10]);
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2, 0);
+      ctx.lineTo(canvas.width / 2, canvas.height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Dessiner la raquette du joueur 1
+      ctx.fillStyle = gameState.player1.color;
+      ctx.fillRect(10, gameState.player1.y, 10, 100);
+
+      // Dessiner la raquette du joueur 2
+      ctx.fillStyle = gameState.player2.color;
+      ctx.fillRect(canvas.width - 20, gameState.player2.y, 10, 100);
+
+      // Dessiner la balle
+      ctx.fillStyle = '#f72585';
+      ctx.beginPath();
+      ctx.arc(gameState.ball.x, gameState.ball.y, gameState.ball.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Continuer l'animation
+      animationFrameId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [gameStarted, ballVelocity, player1Y, player2Y, gameConfig]);
+  }, [gameState]);
 
-  if (!gameConfig || showConfigAfterGame) {
+  const handleBackToMenu = () => {
+    router.push('/pong');
+  };
+
+  if (!roomId) {
     return (
       <div style={styles.container}>
-        <h1 style={styles.title}>Pong à deux joueurs</h1>
-        <ConfigScreen
-          onConfigSubmit={(config) => {
-            setGameConfig(config);
-            setShowConfigAfterGame(false);
-            startGame();
-          }}
-        />
+        <h1 style={styles.title}>Erreur</h1>
+        <p>Room ID manquant</p>
       </div>
     );
   }
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.title}>Pong</h1>
-
-      <div
-        style={{
-          ...styles.gameContainer,
-          width: GAME_WIDTH,
-          height: GAME_HEIGHT,
-        }}
-      >
-        <div style={styles.field}>
-          <div style={styles.centerLine}></div>
-
-          <div
-            style={{
-              ...styles.paddle,
-              left: 0,
-              top: player1Y,
-              height: PADDLE_HEIGHT,
-              backgroundColor: gameConfig.leftPaddleColor,
-            }}
-          />
-
-          <div
-            style={{
-              ...styles.paddle,
-              right: 0,
-              top: player2Y,
-              height: PADDLE_HEIGHT,
-              backgroundColor: gameConfig.rightPaddleColor,
-            }}
-          />
-
-          <div
-            style={{
-              ...styles.ball,
-              left: ballPosition.x,
-              top: ballPosition.y,
-              width: BALL_SIZE,
-              height: BALL_SIZE,
-              backgroundColor: gameConfig.ballColor,
-            }}
-          />
-
-          <div style={styles.score1}>{score.player1}</div>
-          <div style={styles.score2}>{score.player2}</div>
-        </div>
+      <h1 style={styles.title}>Pong - Match en Ligne</h1>
+      
+      <div style={{ marginBottom: '20px', padding: '10px', backgroundColor: 'rgba(255,0,0,0.2)', borderRadius: '5px' }}>
+        <p>Room ID: {roomId || 'N/A'}</p>
+        <p>Game State: {gameState ? 'Received' : 'Waiting...'}</p>
+        <p>Ball: {gameState ? `(${Math.round(gameState.ball?.x)}, ${Math.round(gameState.ball?.y)})` : 'N/A'}</p>
+        <p>Player 1 Score: {gameState?.player1?.score ?? 'N/A'}</p>
+        <p>Player 2 Score: {gameState?.player2?.score ?? 'N/A'}</p>
       </div>
 
-      {!gameStarted && (
-        <div style={styles.startScreen}>
-          <button style={styles.startButton} onClick={startGame}>
-            Commencer la partie
-          </button>
-          <div style={styles.instructions}>
-            <p>
-              <strong>Joueur 1 (gauche):</strong> Touches W et S
-            </p>
-            <p>
-              <strong>Joueur 2 (droite):</strong> Flèches ↑ et ↓
-            </p>
-            <p>Premier à 5 points gagne!</p>
+      {gameState && (
+        <div style={styles.scoreBoard}>
+          <div style={styles.playerScore}>
+            <span style={{ color: gameState.player1.color }}>
+              {gameState.player1.score}
+            </span>
+          </div>
+          <div style={styles.playerScore}>
+            <span style={{ color: gameState.player2.color }}>
+              {gameState.player2.score}
+            </span>
           </div>
         </div>
       )}
 
-      {gameStarted && (
-        <div style={styles.controlsInfo}>
-          <div>Joueur 1: W (monter) - S (descendre)</div>
-          <div>Joueur 2: ↑ (monter) - ↓ (descendre)</div>
+      <div style={styles.gameContainer}>
+        <canvas
+          ref={canvasRef}
+          width={1200}
+          height={800}
+          style={styles.canvas}
+        />
+      </div>
+
+      {winner && (
+        <div style={styles.winnerScreen}>
+          <h2 style={styles.winnerText}>
+            🏆 {winner.winnerNickname} a gagné ! 🏆
+          </h2>
+          <p style={{ fontSize: '1.5rem', marginBottom: '10px' }}>
+            Score final: {winner.finalScore.player1} - {winner.finalScore.player2}
+          </p>
+          <button style={styles.backButton} onClick={handleBackToMenu}>
+            Retour au menu
+          </button>
         </div>
       )}
 
-      {(score.player1 === 5 || score.player2 === 5) && (
-        <div style={styles.winnerScreen}>
-          <h2>Partie terminée!</h2>
-          <p>Le joueur {score.player1 === 5 ? 1 : 2} gagne!</p>
-        </div>
-      )}
+      <p style={{ marginTop: '20px', color: '#9d4edd' }}>
+        Utilisez les flèches ↑ ↓ pour contrôler votre raquette
+      </p>
     </div>
   );
 };

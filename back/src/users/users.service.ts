@@ -9,6 +9,7 @@ import { DataNotFoundException } from 'src/errors/exceptions/data-not-found.exce
 import { FindAllUsersDto } from './dto/find-all-users.dto';
 import { UtilsService } from 'src/utils/utils.service';
 import { AuthorityEnum } from './enums/authority.enum';
+import { GameHistoryService } from 'src/game-history/game-history.service';
 
 @Injectable()
 export class UsersService {
@@ -19,6 +20,8 @@ export class UsersService {
     @Inject(forwardRef(() => AuthService))
     private readonly authService: AuthService,
     @Inject(UtilsService) private readonly utilsService: UtilsService,
+    @Inject(forwardRef(() => GameHistoryService))
+    private readonly gameHistoryService: GameHistoryService,
   ) {}
 
   async createOne(createUserDto: CreateUserDto): Promise<void> {
@@ -243,6 +246,23 @@ export class UsersService {
     return { success: true };
   }
 
+  async removeFriend(userId: string, friendId: string) {
+    const user = await this.usersRepository.findOneBy({ id: userId });
+    const friend = await this.usersRepository.findOneBy({ id: friendId });
+
+    if (!user || !friend) {
+      return { success: false, message: 'User not found' };
+    }
+
+    // Remove friendId from user's friends list
+    user.friends = user.friends.filter((id) => id !== friendId);
+    // Remove userId from friend's friends list
+    friend.friends = friend.friends.filter((id) => id !== userId);
+
+    await this.usersRepository.save([user, friend]);
+    return { success: true };
+  }
+
   async searchUsers(query: string) {
     if (!query || query.trim().length === 0) {
       return [];
@@ -267,14 +287,80 @@ export class UsersService {
   }
 
   async getUserStats(userId: string) {
-    // TODO: integrate with game-history service when available
-    // For now, return empty stats structure
     const user = await this.findOne(userId);
+    if (!user) {
+      throw new DataNotFoundException({ name: 'user' });
+    }
+
+    // Récupérer tous les matchs du joueur
+    const allGames = await this.gameHistoryService.findAll({});
+    const userGames = allGames.filter((game: any) => 
+      game.players.includes(userId)
+    );
+
+    // Calculer les statistiques globales
+    const totalGames = userGames.length;
+    const wins = userGames.filter((game: any) => game.winner === userId).length;
+    const losses = totalGames - wins;
+    const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+
+    // Grouper par type de jeu
+    const gamesByType: { [key: string]: { played: number; won: number; lost: number } } = {};
+    
+    userGames.forEach((game: any) => {
+      const gameType = game.gametype;
+      if (!gamesByType[gameType]) {
+        gamesByType[gameType] = { played: 0, won: 0, lost: 0 };
+      }
+      gamesByType[gameType].played++;
+      if (game.winner === userId) {
+        gamesByType[gameType].won++;
+      } else {
+        gamesByType[gameType].lost++;
+      }
+    });
+
+    const games = Object.keys(gamesByType).map(gameType => ({
+      game: gameType,
+      played: gamesByType[gameType].played,
+      won: gamesByType[gameType].won,
+      lost: gamesByType[gameType].lost,
+    }));
+
+    // Créer l'historique des matchs (limité aux 20 derniers)
+    const history = await Promise.all(
+      userGames
+        .sort((a: any, b: any) => b.date - a.date)
+        .slice(0, 20)
+        .map(async (game: any) => {
+          const opponentId = game.players.find((p: string) => p !== userId);
+          let opponentName = 'Inconnu';
+          
+          if (opponentId) {
+            try {
+              const opponent = await this.findOne(opponentId);
+              opponentName = opponent?.nickname || 'Inconnu';
+            } catch (e) {
+              // Si l'adversaire n'existe plus, garder "Inconnu"
+            }
+          }
+
+          return {
+            id: game.id,
+            game: game.gametype,
+            result: game.winner === userId ? 'win' : 'loss',
+            date: new Date(game.date).toLocaleDateString('fr-FR'),
+            opponentId: opponentId || '',
+            opponentName,
+          };
+        })
+    );
+
     return {
-      totalGames: 0,
-      winRate: 0,
-      games: [],
-      history: [],
+      totalGames,
+      winRate,
+      games,
+      history,
     };
   }
 

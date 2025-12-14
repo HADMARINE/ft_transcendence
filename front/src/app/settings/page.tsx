@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiUser, FiMail, FiLock, FiUsers, FiUserPlus, FiSettings, FiCheck, FiX, FiBarChart2 } from 'react-icons/fi';
 import { getCurrentUser, updateUserEmail, updateUserPassword, updateUserStatus, updateUserProfile, updateUserNickname, UserProfile } from '../../api/users';
-import { getFriends, getFriendRequests, searchUsers, sendFriendRequest, acceptFriendRequest, declineFriendRequest, SearchResult, FriendRequest as ApiFriendRequest, Friend } from '../../api/friends';
+import { getFriends, getFriendRequests, searchUsers, sendFriendRequest, acceptFriendRequest, declineFriendRequest, removeFriend, SearchResult, FriendRequest as ApiFriendRequest, Friend } from '../../api/friends';
 import { getUserStats, UserStats } from '../../api/stats';
 import { logout as logoutApi } from '../../api/auth';
 import { useGameData } from '@/util/useGameData';
@@ -285,6 +285,29 @@ const ProfilePage = () => {
       }
     } catch (error) {
       console.error('Error accepting friend request:', error);
+    }
+  };
+
+  const handleRemoveFriend = async (friendId: string) => {
+    if (!userId) return;
+    
+    const friend = friends.find(f => f.id === friendId);
+    if (!friend) return;
+    
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer ${friend.username} de vos amis?`)) {
+      return;
+    }
+    
+    try {
+      const result = await removeFriend(userId, friendId);
+      if (result.success) {
+        setFriends(friends.filter(f => f.id !== friendId));
+        alert(`${friend.username} a été supprimé de vos amis`);
+      } else {
+        alert(`Erreur: ${result.message || 'Échec de la suppression'}`);
+      }
+    } catch (error) {
+      console.error('Error removing friend:', error);
     }
   };
   
@@ -810,6 +833,28 @@ const ProfilePage = () => {
                         {friend.status === 'in_game' && 'En jeu'}
                       </div>
                     </div>
+                    <button
+                      onClick={() => handleRemoveFriend(friend.id)}
+                      style={{
+                        background: 'rgba(255, 77, 109, 0.3)',
+                        border: '1px solid rgba(255, 77, 109, 0.5)',
+                        color: '#ff4d6d',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        fontWeight: 'bold',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseOver={(e) => {
+                        (e.target as HTMLButtonElement).style.background = 'rgba(255, 77, 109, 0.5)';
+                      }}
+                      onMouseOut={(e) => {
+                        (e.target as HTMLButtonElement).style.background = 'rgba(255, 77, 109, 0.3)';
+                      }}
+                    >
+                      Supprimer
+                    </button>
                     {(friend.status === 'online' || friend.status === 'in_game') && (
                       <div style={{
                         position: 'absolute',

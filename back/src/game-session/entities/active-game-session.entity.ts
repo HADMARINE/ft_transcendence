@@ -26,10 +26,15 @@ export class ActiveGameSession<TData> {
       color: string | null;
       map: string | null;
       ready: boolean;
+      paddleSpeed?: number;
     };
   };
   createdAt: number;
   room: ReturnType<Server['in']>;
   currentClass: number;
   mapVoteData: string[];
+  
+  // Tournament tracking
+  tournamentId?: string;
+  matchId?: string;
 }

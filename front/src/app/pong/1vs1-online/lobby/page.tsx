@@ -1,816 +1,468 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { IngameStatus, useGameData } from "@/util/useGameData";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { GametypeEnum, IngameStatus, useGameData } from "@/util/useGameData";
 
-const TournamentPage = () => {
-  const router = useRouter();
+interface PlayerInfo {
+  id: string;
+  nickname: string;
+  email?: string;
+}
 
-  const gameData = useGameData();
-
-  const [players] = useState([
-    { id: 1, name: "Alex Martin", avatar: "AM" },
-    { id: 2, name: "Sophie Dubois", avatar: "SD" },
-    { id: 3, name: "Jean Dupont", avatar: "JD" },
-    { id: 4, name: "Marie Curie", avatar: "MC" },
-    { id: 5, name: "Thomas Edison", avatar: "TE" },
-    { id: 6, name: "Camille Rousseau", avatar: "CR" },
-    { id: 7, name: "Lucas Bernard", avatar: "LB" },
-    { id: 8, name: "Emma Laurent", avatar: "EL" },
-  ]);
-
-  const [tournamentSize, setTournamentSize] = useState(8); // 2, 4 ou 8 joueurs
-  const [matches, setMatches] = useState<any[]>([]);
-  const [activeMatch, setActiveMatch] = useState<number | null>(null);
-  const [scores, setScores] = useState<{ [key: number]: [number, number] }>({});
-  const [tournamentWinner, setTournamentWinner] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!gameData.isConnected) return;
-    console.log(gameData);
-    setTournamentSize(
-      gameData.ingameData?.tournamentHistory[0]?.length * 2 || 8
-    );
-  }, [gameData.ingameData]);
-
-  useEffect(() => {
-    if (gameData.status === IngameStatus.NEXT_ROUND_SELECT) {
-      router.replace("/pong/1vs1-online/game");
-    }
-  }, [gameData.status]);
-
-  useEffect(() => {
-    let initialMatches: any[] = [];
-
-    if (tournamentSize === 2) {
-      initialMatches = [
-        {
-          id: 1,
-          round: "finale",
-          player1Id: 1,
-          player2Id: 2,
-          winnerId: null,
-          score: null,
-        },
-      ];
-    } else if (tournamentSize === 4) {
-      initialMatches = [
-        {
-          id: 1,
-          round: "demi",
-          player1Id: 1,
-          player2Id: 2,
-          winnerId: null,
-          score: null,
-        },
-        {
-          id: 2,
-          round: "demi",
-          player1Id: 3,
-          player2Id: 4,
-          winnerId: null,
-          score: null,
-        },
-        {
-          id: 3,
-          round: "finale",
-          player1Id: null,
-          player2Id: null,
-          winnerId: null,
-          score: null,
-        },
-      ];
-    } else {
-      // 8 joueurs
-      initialMatches = [
-        {
-          id: 1,
-          round: "quart",
-          player1Id: 1,
-          player2Id: 2,
-          winnerId: null,
-          score: null,
-        },
-        {
-          id: 2,
-          round: "quart",
-          player1Id: 3,
-          player2Id: 4,
-          winnerId: null,
-          score: null,
-        },
-        {
-          id: 3,
-          round: "quart",
-          player1Id: 5,
-          player2Id: 6,
-          winnerId: null,
-          score: null,
-        },
-        {
-          id: 4,
-          round: "quart",
-          player1Id: 7,
-          player2Id: 8,
-          winnerId: null,
-          score: null,
-        },
-        {
-          id: 5,
-          round: "demi",
-          player1Id: null,
-          player2Id: null,
-          winnerId: null,
-          score: null,
-        },
-        {
-          id: 6,
-          round: "demi",
-          player1Id: null,
-          player2Id: null,
-          winnerId: null,
-          score: null,
-        },
-        {
-          id: 7,
-          round: "finale",
-          player1Id: null,
-          player2Id: null,
-          winnerId: null,
-          score: null,
-        },
-      ];
-    }
-
-    setMatches(initialMatches);
-    setScores({});
-    setActiveMatch(null);
-    setTournamentWinner(null);
-  }, [tournamentSize]);
-
-  useEffect(() => {
-    setMatches((prevMatches) => {
-      const updatedMatches = [...prevMatches];
-
-      if (tournamentSize === 8) {
-        updatedMatches[4] = {
-          ...updatedMatches[4],
-          player1Id: getMatchWinner(1),
-          player2Id: getMatchWinner(2),
-        };
-
-        updatedMatches[5] = {
-          ...updatedMatches[5],
-          player1Id: getMatchWinner(3),
-          player2Id: getMatchWinner(4),
-        };
-
-        updatedMatches[6] = {
-          ...updatedMatches[6],
-          player1Id: getMatchWinner(5),
-          player2Id: getMatchWinner(6),
-        };
-
-        const finalWinner = getMatchWinner(7);
-        if (finalWinner) {
-          setTimeout(() => setTournamentWinner(finalWinner), 0);
-        }
-      } else if (tournamentSize === 4) {
-        updatedMatches[2] = {
-          ...updatedMatches[2],
-          player1Id: getMatchWinner(1),
-          player2Id: getMatchWinner(2),
-        };
-
-        const finalWinner = getMatchWinner(3);
-        if (finalWinner) {
-          setTimeout(() => setTournamentWinner(finalWinner), 0);
-        }
-      } else if (tournamentSize === 2) {
-        const finalWinner = getMatchWinner(1);
-        if (finalWinner) {
-          setTimeout(() => setTournamentWinner(finalWinner), 0);
-        }
-      }
-
-      return updatedMatches;
-    });
-  }, [scores, tournamentSize]);
-
-  const getMatchWinner = (matchId: number) => {
-    const match = matches.find((m) => m.id === matchId);
-    if (!match || !scores[matchId]) return null;
-
-    const [score1, score2] = scores[matchId];
-    return score1 > score2 ? match.player1Id : match.player2Id;
-  };
-
-  const getPlayer = (playerId: number | null) => {
-    if (!playerId) return null;
-    return players.find((p) => p.id === playerId);
-  };
-
-  const recordScore = (matchId: number, score1: number, score2: number) => {
-    if (score1 < 0 || score2 < 0) return;
-
-    setScores((prev) => ({
-      ...prev,
-      [matchId]: [score1, score2],
-    }));
-    setActiveMatch(null);
-  };
-
-  const renderMatch = (match: any) => {
-    const player1 = getPlayer(match.player1Id);
-    const player2 = getPlayer(match.player2Id);
-    const matchScore = scores[match.id];
-    const winnerId = getMatchWinner(match.id);
-
-    return (
-      <div
-        key={match.id}
-        style={{
-          background: "rgba(22, 33, 62, 0.5)",
-          borderRadius: "10px",
-          padding: "15px",
-          margin: "10px 0",
-          border:
-            activeMatch === match.id
-              ? "2px solid #f72585"
-              : winnerId
-              ? "2px solid #4cf06e"
-              : "1px solid rgba(76, 201, 240, 0.3)",
-          cursor: "pointer",
-          transition: "all 0.3s ease",
-          position: "relative",
-          zIndex: 2,
-        }}
-        onClick={() => !matchScore && setActiveMatch(match.id)}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "5px",
-          }}
-        >
-          <span style={{ fontSize: "0.8rem", color: "#4cc9f0" }}>
-            Match {match.id} •{" "}
-            {match.round === "quart"
-              ? "Quart de finale"
-              : match.round === "demi"
-              ? "Demi-finale"
-              : "Finale"}
-          </span>
-          {matchScore && (
-            <span
-              style={{
-                fontSize: "0.8rem",
-                color: winnerId ? "#4cf06e" : "#f72585",
-                fontWeight: "bold",
-              }}
-            >
-              {winnerId ? "Terminé" : "À venir"}
-            </span>
-          )}
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div
-              style={{
-                width: "30px",
-                height: "30px",
-                borderRadius: "50%",
-                background: player1
-                  ? "linear-gradient(45deg, #4cc9f0, #4361ee)"
-                  : "rgba(76, 201, 240, 0.2)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "0.9rem",
-              }}
-            >
-              {player1 ? player1.avatar : "?"}
-            </div>
-            <span
-              style={{
-                fontWeight: winnerId === player1?.id ? "bold" : "normal",
-              }}
-            >
-              {player1 ? player1.name : "À déterminer"}
-            </span>
-          </div>
-
-          {matchScore ? (
-            <div
-              style={{
-                display: "flex",
-                gap: "10px",
-                fontWeight: "bold",
-                fontSize: "1.2rem",
-              }}
-            >
-              <span
-                style={{
-                  color: matchScore[0] > matchScore[1] ? "#4cf06e" : "#e6e6e6",
-                  minWidth: "20px",
-                  textAlign: "center",
-                }}
-              >
-                {matchScore[0]}
-              </span>
-              <span>-</span>
-              <span
-                style={{
-                  color: matchScore[1] > matchScore[0] ? "#4cf06e" : "#e6e6e6",
-                  minWidth: "20px",
-                  textAlign: "center",
-                }}
-              >
-                {matchScore[1]}
-              </span>
-            </div>
-          ) : (
-            <span style={{ color: "#aaa" }}>VS</span>
-          )}
-
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span
-              style={{
-                fontWeight: winnerId === player2?.id ? "bold" : "normal",
-              }}
-            >
-              {player2 ? player2.name : "À déterminer"}
-            </span>
-            <div
-              style={{
-                width: "30px",
-                height: "30px",
-                borderRadius: "50%",
-                background: player2
-                  ? "linear-gradient(45deg, #4cc9f0, #4361ee)"
-                  : "rgba(76, 201, 240, 0.2)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "0.9rem",
-              }}
-            >
-              {player2 ? player2.avatar : "?"}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const containerStyle = {
+const styles = {
+  container: {
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "center",
+    justifyContent: "center",
     minHeight: "100vh",
-    background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+    backgroundColor: "#1a1a2e",
     color: "#e6e6e6",
-    padding: "20px",
     fontFamily: "Arial, sans-serif",
-    position: "relative",
-    overflow: "hidden",
-  };
-
-  const cardStyle = {
-    background: "rgba(30, 30, 46, 0.7)",
+    padding: "20px",
+  },
+  title: {
+    fontSize: "2.5rem",
+    marginBottom: "10px",
+    color: "#4cc9f0",
+    textShadow: "0 0 10px rgba(76, 201, 240, 0.7)",
+  },
+  subtitle: {
+    fontSize: "1.2rem",
+    marginBottom: "30px",
+    color: "#f72585",
+  },
+  lobbyContainer: {
+    backgroundColor: "rgba(22, 33, 62, 0.8)",
+    border: "2px solid #4cc9f0",
     borderRadius: "15px",
-    padding: "25px",
-    marginBottom: "25px",
-    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
-    backdropFilter: "blur(10px)",
-    border: "1px solid rgba(76, 201, 240, 0.2)",
-    zIndex: 2,
-    position: "relative",
-  };
-
-  const buttonStyle = {
-    background: "linear-gradient(45deg, #4cc9f0, #4361ee)",
-    border: "none",
-    color: "white",
-    padding: "12px 25px",
-    borderRadius: "50px",
-    cursor: "pointer",
+    padding: "40px",
+    minWidth: "900px",
+    maxWidth: "1200px",
+    textAlign: "center" as const,
+    boxShadow: "0 0 30px rgba(76, 201, 240, 0.5)",
+  },
+  timerSection: {
+    marginBottom: "30px",
+    padding: "20px",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    borderRadius: "10px",
+  },
+  timerLabel: {
+    fontSize: "1.2rem",
+    color: "#e6e6e6",
+    marginBottom: "10px",
+  },
+  timerValue: {
+    fontSize: "4rem",
     fontWeight: "bold",
+    color: "#4cc9f0",
+    textShadow: "0 0 20px rgba(76, 201, 240, 0.7)",
+  },
+  timerLow: {
+    color: "#f72585",
+    animation: "blink 0.5s ease-in-out infinite",
+  },
+  progressBar: {
+    width: "100%",
+    height: "10px",
+    backgroundColor: "rgba(76, 201, 240, 0.2)",
+    borderRadius: "5px",
+    marginTop: "15px",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#4cc9f0",
+    borderRadius: "5px",
+    transition: "width 1s linear",
+  },
+  playersSection: {
+    marginBottom: "30px",
+  },
+  playersTitle: {
+    fontSize: "1.5rem",
+    color: "#4cc9f0",
+    marginBottom: "20px",
+  },
+  playersGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: "15px",
+    justifyContent: "center",
+  },
+  playerCard: {
+    backgroundColor: "rgba(76, 201, 240, 0.1)",
+    border: "2px solid #4cc9f0",
+    borderRadius: "12px",
+    padding: "20px",
+    textAlign: "center" as const,
     transition: "all 0.3s ease",
+  },
+  playerCardEmpty: {
+    backgroundColor: "rgba(100, 100, 100, 0.1)",
+    border: "2px dashed #666",
+  },
+  avatar: {
+    width: "60px",
+    height: "60px",
+    borderRadius: "50%",
+    backgroundColor: "#16213e",
+    margin: "0 auto 10px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: "10px",
+    fontSize: "1.5rem",
+    border: "2px solid #4cc9f0",
+    color: "#4cc9f0",
+  },
+  avatarEmpty: {
+    border: "2px dashed #666",
+    color: "#666",
+  },
+  playerName: {
+    fontSize: "1rem",
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: "5px",
+  },
+  playerEmail: {
+    fontSize: "0.8rem",
+    color: "#888",
+  },
+  formatSection: {
+    marginBottom: "30px",
+    padding: "15px",
+    backgroundColor: "rgba(247, 37, 133, 0.1)",
+    borderRadius: "10px",
+    border: "1px solid #f72585",
+  },
+  formatTitle: {
+    fontSize: "1.3rem",
+    color: "#f72585",
+    marginBottom: "10px",
+  },
+  formatDescription: {
+    fontSize: "1rem",
+    color: "#e6e6e6",
+  },
+  waitingText: {
+    fontSize: "1.2rem",
+    color: "#4cc9f0",
+    marginTop: "20px",
+    animation: "pulse 1.5s ease-in-out infinite",
+  },
+  cancelButton: {
+    backgroundColor: "transparent",
+    color: "#f72585",
+    border: "2px solid #f72585",
+    padding: "12px 30px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "1rem",
+    fontWeight: "bold",
+    transition: "all 0.3s ease",
+    marginTop: "20px",
+  },
+  infoBox: {
+    marginTop: "20px",
+    padding: "15px",
+    backgroundColor: "rgba(76, 201, 240, 0.1)",
+    borderRadius: "8px",
+    fontSize: "0.9rem",
+    color: "#aaa",
+  },
+};
+
+export default function LobbyPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const gameData = useGameData();
+  
+  const [players, setPlayers] = useState<PlayerInfo[]>([]);
+  const [timeRemaining, setTimeRemaining] = useState(60);
+  const [roomId, setRoomId] = useState<string | null>(searchParams.get("roomId"));
+  const [tournamentFormat, setTournamentFormat] = useState<string>("DUEL");
+  const maxPlayers = 8;
+
+  // Charger les données initiales du lobby depuis sessionStorage
+  useEffect(() => {
+    const lobbyDataStr = sessionStorage.getItem('lobbyData');
+    if (lobbyDataStr) {
+      try {
+        const lobbyData = JSON.parse(lobbyDataStr);
+        console.log("Loading lobby data from sessionStorage:", lobbyData);
+        if (lobbyData.players) {
+          setPlayers(lobbyData.players);
+        }
+        if (lobbyData.roomId) {
+          setRoomId(lobbyData.roomId);
+        }
+        if (lobbyData.timeRemaining) {
+          setTimeRemaining(lobbyData.timeRemaining);
+        }
+        sessionStorage.removeItem('lobbyData');
+      } catch (e) {
+        console.error("Error parsing lobby data:", e);
+      }
+    }
+  }, []);
+
+  // Écouter les événements du lobby
+  useEffect(() => {
+    if (!gameData.client) return;
+
+    const onLobbyCreated = (data: { roomId: string; players: PlayerInfo[]; timeRemaining: number }) => {
+      console.log("Lobby created:", data);
+      setRoomId(data.roomId);
+      setPlayers(data.players);
+      setTimeRemaining(data.timeRemaining);
+    };
+
+    const onLobbyUpdated = (data: { roomId: string; players: PlayerInfo[]; timeRemaining: number }) => {
+      console.log("Lobby updated:", data);
+      setPlayers(data.players);
+      setTimeRemaining(data.timeRemaining);
+    };
+
+    const onLobbyCountdown = (data: { timeRemaining: number; playerCount: number }) => {
+      setTimeRemaining(data.timeRemaining);
+    };
+
+    const onTournamentStarting = (data: { format: string; players: PlayerInfo[]; brackets: string[][]; tournamentId: string }) => {
+      console.log("Tournament starting:", data);
+      setTournamentFormat(data.format);
+      
+      // Stocker les données du tournoi pour la transition
+      const tournamentData = {
+        id: data.tournamentId,
+        gametype: 'PONG',
+        players: data.players,
+        matches: [],
+        currentMatch: null,
+        spectators: [],
+        status: 'waiting',
+        winner: null,
+      };
+      sessionStorage.setItem('tournamentData', JSON.stringify(tournamentData));
+      
+      // Rediriger vers la page du tournoi
+      setTimeout(() => {
+        router.push(`/pong/1vs1-online/tournament?tournamentId=${data.tournamentId}`);
+      }, 1000);
+    };
+
+    const onTournamentBracket = (data: { tournamentId: string; matches: Array<{ id: string; player1: PlayerInfo | null; player2: PlayerInfo | null; winner: PlayerInfo | null; status: string; round: number; matchIndex: number }> }) => {
+      console.log("Tournament bracket received:", data);
+      // Stocker les données complètes et rediriger
+      sessionStorage.setItem('tournamentData', JSON.stringify(data));
+      router.push(`/pong/1vs1-online/tournament?tournamentId=${data.tournamentId}`);
+    };
+
+    const onLobbyCancelled = (data: { reason: string }) => {
+      console.log("Lobby cancelled:", data);
+      alert("Lobby annulé: pas assez de joueurs");
+      router.push("/pong");
+    };
+
+    const onPlayerDisconnected = (data: { disconnectedPlayer: { id: string; nickname: string }; remainingPlayers: number }) => {
+      console.log("Player disconnected:", data);
+      // L'affichage sera mis à jour via lobby-updated
+    };
+
+    gameData.client.on("lobby-created", onLobbyCreated);
+    gameData.client.on("lobby-updated", onLobbyUpdated);
+    gameData.client.on("lobby-countdown", onLobbyCountdown);
+    gameData.client.on("player-disconnected", onPlayerDisconnected);
+    gameData.client.on("tournament-starting", onTournamentStarting);
+    gameData.client.on("tournament-bracket", onTournamentBracket);
+    gameData.client.on("lobby-cancelled", onLobbyCancelled);
+
+    return () => {
+      gameData.client?.off("lobby-created", onLobbyCreated);
+      gameData.client?.off("lobby-updated", onLobbyUpdated);
+      gameData.client?.off("lobby-countdown", onLobbyCountdown);
+      gameData.client?.off("player-disconnected", onPlayerDisconnected);
+      gameData.client?.off("tournament-starting", onTournamentStarting);
+      gameData.client?.off("tournament-bracket", onTournamentBracket);
+      gameData.client?.off("lobby-cancelled", onLobbyCancelled);
+    };
+  }, [gameData.client, roomId, router]);
+
+  // Redirection si le jeu démarre
+  useEffect(() => {
+    if (gameData.status === IngameStatus.WAITING_FOR_PLAYERS || gameData.status === IngameStatus.IN_PROGRESS) {
+      router.replace(`/pong/1vs1-online/game${roomId ? `?roomId=${roomId}` : ""}`);
+    }
+  }, [gameData.status, router, roomId]);
+
+  const handleCancel = () => {
+    if (gameData.client) {
+      gameData.client.emit("leave-lobby", { gametype: GametypeEnum.PONG });
+    }
+    gameData.unregisterQueue();
+    router.push("/pong");
   };
 
-  const sizeButtonStyle = (size: number) => ({
-    ...buttonStyle,
-    padding: "8px 15px",
-    background:
-      tournamentSize === size
-        ? "linear-gradient(45deg, #4cf06e, #3a9c4a)"
-        : "rgba(76, 201, 240, 0.2)",
-    border:
-      tournamentSize === size
-        ? "1px solid #4cf06e"
-        : "1px solid rgba(76, 201, 240, 0.5)",
-  });
-
-  const [balls] = useState(() => {
-    return Array.from({ length: 12 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 50 + 30,
-      speedX: (Math.random() - 0.5) * 0.8,
-      speedY: (Math.random() - 0.5) * 0.8,
-      color: i % 2 === 0 ? "#4cc9f0" : "#f72585",
-    }));
-  });
-
-  const getGridColumns = () => {
-    if (tournamentSize === 2) return "1fr";
-    if (tournamentSize === 4) return "repeat(2, 1fr)";
-    return "repeat(3, 1fr)";
+  const getInitials = (name: string) => {
+    return name ? name.charAt(0).toUpperCase() : "?";
   };
+
+  const getFormatDescription = (playerCount: number): { format: string; description: string } => {
+    if (playerCount >= 8) {
+      return { format: "Tournoi 8 joueurs", description: "Quarts de finale → Demi-finales → Finale" };
+    } else if (playerCount >= 4) {
+      return { format: "Tournoi 4 joueurs", description: "Demi-finales → Finale" };
+    } else {
+      return { format: "Duel 1v1", description: "Match simple" };
+    }
+  };
+
+  const formatInfo = getFormatDescription(players.length);
 
   return (
-    <div style={containerStyle}>
-      {balls.map((ball) => (
-        <div
-          key={ball.id}
-          style={{
-            position: "absolute",
-            borderRadius: "50%",
-            left: `${ball.x}%`,
-            top: `${ball.y}%`,
-            width: ball.size,
-            height: ball.size,
-            backgroundColor: `rgba(${
-              ball.color === "#4cc9f0" ? "76, 201, 240" : "247, 37, 133"
-            }, ${0.2 + 0.4 * 0.3})`,
-            animation: `move${ball.id} ${
-              15 + 0.5 * 20
-            }s infinite alternate ease-in-out`,
-            zIndex: 1,
-          }}
-        />
-      ))}
+    <div style={styles.container}>
+      <style jsx global>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.02); }
+        }
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse-icon {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+          50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.7; }
+        }
+        .lobby-spinner {
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          border: 4px solid rgba(76, 201, 240, 0.2);
+          border-top: 4px solid #4cc9f0;
+          border-right: 4px solid #f72585;
+          animation: spin 1s linear infinite;
+          position: relative;
+          margin: 0 auto 15px auto;
+          box-shadow: 0 0 20px rgba(76, 201, 240, 0.3);
+        }
+        .lobby-spinner::before {
+          content: '';
+          position: absolute;
+          top: 8px;
+          left: 8px;
+          right: 8px;
+          bottom: 8px;
+          border-radius: 50%;
+          border: 3px solid transparent;
+          border-top: 3px solid #f72585;
+          border-left: 3px solid #4cc9f0;
+          animation: spin 0.7s linear infinite reverse;
+        }
+        .waiting-dots::after {
+          content: '';
+          animation: dots 1.5s infinite;
+        }
+        @keyframes dots {
+          0%, 20% { content: '.'; }
+          40% { content: '..'; }
+          60%, 100% { content: '...'; }
+        }
+      `}</style>
 
-      <div
-        style={{ maxWidth: "1200px", margin: "0 auto", position: "relative" }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "30px",
-          }}
-        >
-          <h1
-            style={{
-              fontSize: "2.5rem",
-              color: "#4cc9f0",
-              textShadow: "0 0 10px rgba(76, 201, 240, 0.7)",
-            }}
-          >
-            Tournoi Pong 1vs1
-          </h1>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <div style={{ display: "flex", gap: "5px" }}>
-              <button
-                onClick={() => setTournamentSize(2)}
-                style={sizeButtonStyle(2)}
-              >
-                2J
-              </button>
-              <button
-                onClick={() => setTournamentSize(4)}
-                style={sizeButtonStyle(4)}
-              >
-                4J
-              </button>
-              <button
-                onClick={() => setTournamentSize(8)}
-                style={sizeButtonStyle(8)}
-              >
-                8J
-              </button>
-            </div>
-            <button
-              onClick={() => router.push("/")}
-              style={{
-                ...buttonStyle,
-                background: "rgba(247, 37, 133, 0.2)",
-                border: "1px solid rgba(247, 37, 133, 0.5)",
-              }}
-            >
-              Retour à l'accueil
-            </button>
+      <h1 style={styles.title}>Lobby d'attente</h1>
+      <p style={styles.subtitle}>Pong - Mode En Ligne</p>
+
+      <div style={styles.lobbyContainer}>
+        {/* Timer Section */}
+        <div style={styles.timerSection}>
+          <div style={styles.timerLabel}>Le tournoi commence dans</div>
+          <div style={{
+            ...styles.timerValue,
+            ...(timeRemaining <= 10 ? styles.timerLow : {}),
+          }}>
+            {timeRemaining}s
+          </div>
+          <div style={styles.progressBar}>
+            <div style={{
+              ...styles.progressFill,
+              width: `${(timeRemaining / 60) * 100}%`,
+            }} />
           </div>
         </div>
 
-        <div style={{ ...cardStyle, marginBottom: "30px" }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: getGridColumns(),
-              gap: "20px",
-              marginTop: "20px",
-            }}
-          >
-            {tournamentSize === 8 && (
-              <div>
-                <h3
-                  style={{
-                    color: "#4cc9f0",
-                    marginBottom: "15px",
-                    textAlign: "center",
-                  }}
-                >
-                  Quarts de finale
-                </h3>
-                {matches.filter((m) => m.round === "quart").map(renderMatch)}
-              </div>
-            )}
+        {/* Format du tournoi */}
+        <div style={styles.formatSection}>
+          <div style={styles.formatTitle}>Format actuel: {formatInfo.format}</div>
+          <div style={styles.formatDescription}>{formatInfo.description}</div>
+        </div>
 
-            {(tournamentSize === 4 || tournamentSize === 8) && (
-              <div>
-                <h3
-                  style={{
-                    color: "#4cc9f0",
-                    marginBottom: "15px",
-                    textAlign: "center",
-                  }}
-                >
-                  Demi-finales
-                </h3>
-                {matches.filter((m) => m.round === "demi").map(renderMatch)}
-              </div>
-            )}
-
-            <div>
-              <h3
-                style={{
-                  color: "#4cc9f0",
-                  marginBottom: "15px",
-                  textAlign: "center",
-                }}
-              >
-                Finale
-              </h3>
-              {matches.filter((m) => m.round === "finale").map(renderMatch)}
-
-              {tournamentWinner && (
-                <div
-                  style={{
-                    background: "rgba(76, 240, 110, 0.1)",
-                    border: "2px solid #4cf06e",
-                    borderRadius: "10px",
-                    padding: "20px",
-                    marginTop: "20px",
-                    textAlign: "center",
-                  }}
-                >
-                  <h3 style={{ color: "#4cf06e", marginBottom: "10px" }}>
-                    Vainqueur du tournoi
-                  </h3>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "15px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "50px",
-                        height: "50px",
-                        borderRadius: "50%",
-                        background: "linear-gradient(45deg, #4cc9f0, #4361ee)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "1.2rem",
-                      }}
-                    >
-                      {getPlayer(tournamentWinner)?.avatar}
-                    </div>
-                    <div style={{ fontSize: "1.2rem", fontWeight: "bold" }}>
-                      {getPlayer(tournamentWinner)?.name}
-                    </div>
-                  </div>
+        {/* Liste des joueurs */}
+        <div style={styles.playersSection}>
+          <h2 style={styles.playersTitle}>
+            Joueurs ({players.length}/{maxPlayers})
+          </h2>
+          <div style={styles.playersGrid}>
+            {/* Afficher les joueurs présents */}
+            {players.map((player, index) => (
+              <div key={player.id} style={styles.playerCard}>
+                <div style={styles.avatar}>
+                  {getInitials(player.nickname)}
                 </div>
-              )}
-            </div>
+                <div style={styles.playerName}>{player.nickname}</div>
+                {player.email && (
+                  <div style={styles.playerEmail}>{player.email}</div>
+                )}
+              </div>
+            ))}
+            
+            {/* Afficher les emplacements vides */}
+            {Array.from({ length: maxPlayers - players.length }).map((_, index) => (
+              <div key={`empty-${index}`} style={{ ...styles.playerCard, ...styles.playerCardEmpty }}>
+                <div style={{ ...styles.avatar, ...styles.avatarEmpty }}>?</div>
+                <div style={{ ...styles.playerName, color: '#666' }}>En attente...</div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {activeMatch !== null && (
-          <div style={cardStyle}>
-            <h2
-              style={{
-                fontSize: "1.8rem",
-                marginBottom: "25px",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-              }}
-            >
-              Enregistrer le score
-            </h2>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "30px",
-              }}
-            >
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "15px" }}
-              >
-                <div
-                  style={{
-                    width: "50px",
-                    height: "50px",
-                    borderRadius: "50%",
-                    background: "linear-gradient(45deg, #4cc9f0, #4361ee)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "1.2rem",
-                  }}
-                >
-                  {
-                    getPlayer(
-                      matches.find((m) => m.id === activeMatch)?.player1Id
-                    )?.avatar
-                  }
-                </div>
-                <div>
-                  <div style={{ fontWeight: "bold" }}>
-                    {
-                      getPlayer(
-                        matches.find((m) => m.id === activeMatch)?.player1Id
-                      )?.name
-                    }
-                  </div>
-                </div>
-              </div>
-
-              <div
-                style={{ display: "flex", gap: "20px", alignItems: "center" }}
-              >
-                <input
-                  type="number"
-                  min="0"
-                  value={scores[activeMatch]?.[0] || 0}
-                  onChange={(e) => {
-                    const newScore = parseInt(e.target.value) || 0;
-                    setScores((prev) => ({
-                      ...prev,
-                      [activeMatch]: [newScore, prev[activeMatch]?.[1] || 0],
-                    }));
-                  }}
-                  style={{
-                    width: "70px",
-                    padding: "12px",
-                    borderRadius: "10px",
-                    border: "1px solid rgba(76, 201, 240, 0.3)",
-                    background: "rgba(22, 33, 62, 0.5)",
-                    color: "#fff",
-                    fontSize: "18px",
-                    textAlign: "center",
-                  }}
-                />
-                <span style={{ fontSize: "1.5rem" }}>-</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={scores[activeMatch]?.[1] || 0}
-                  onChange={(e) => {
-                    const newScore = parseInt(e.target.value) || 0;
-                    setScores((prev) => ({
-                      ...prev,
-                      [activeMatch]: [prev[activeMatch]?.[0] || 0, newScore],
-                    }));
-                  }}
-                  style={{
-                    width: "70px",
-                    padding: "12px",
-                    borderRadius: "10px",
-                    border: "1px solid rgba(76, 201, 240, 0.3)",
-                    background: "rgba(22, 33, 62, 0.5)",
-                    color: "#fff",
-                    fontSize: "18px",
-                    textAlign: "center",
-                  }}
-                />
-              </div>
-
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "15px" }}
-              >
-                <div>
-                  <div style={{ fontWeight: "bold" }}>
-                    {
-                      getPlayer(
-                        matches.find((m) => m.id === activeMatch)?.player2Id
-                      )?.name
-                    }
-                  </div>
-                </div>
-                <div
-                  style={{
-                    width: "50px",
-                    height: "50px",
-                    borderRadius: "50%",
-                    background: "linear-gradient(45deg, #4cc9f0, #4361ee)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "1.2rem",
-                  }}
-                >
-                  {
-                    getPlayer(
-                      matches.find((m) => m.id === activeMatch)?.player2Id
-                    )?.avatar
-                  }
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{ display: "flex", justifyContent: "center", gap: "20px" }}
-            >
-              <button
-                style={{
-                  ...buttonStyle,
-                  background: "rgba(247, 37, 133, 0.2)",
-                  border: "1px solid rgba(247, 37, 133, 0.5)",
-                }}
-                onClick={() => setActiveMatch(null)}
-              >
-                Annuler
-              </button>
-              <button
-                style={{
-                  ...buttonStyle,
-                  background: "linear-gradient(45deg, #4cc9f0, #4361ee)",
-                }}
-                onClick={() => {
-                  const score1 = scores[activeMatch]?.[0] || 0;
-                  const score2 = scores[activeMatch]?.[1] || 0;
-                  recordScore(activeMatch, score1, score2);
-                }}
-              >
-                Enregistrer le score
-              </button>
-            </div>
+        {/* Message d'attente avec spinner */}
+        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+          {players.length < 2 && <div className="lobby-spinner"></div>}
+          <div style={styles.waitingText}>
+            {players.length < 2 
+              ? <>En attente d'autres joueurs<span className="waiting-dots"></span></>
+              : `${players.length} joueurs prêts - D'autres peuvent encore rejoindre!`}
           </div>
-        )}
-      </div>
+        </div>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          marginTop: "30px",
-          marginBottom: "50px",
-          position: "relative",
-          zIndex: 2,
-        }}
-      >
+        {/* Info box */}
+        <div style={styles.infoBox}>
+          💡 Plus de joueurs peuvent rejoindre jusqu'à la fin du timer. 
+          Le format du tournoi s'adapte automatiquement au nombre de joueurs.
+        </div>
+
         <button
-          style={{
-            ...buttonStyle,
-            padding: "15px 40px",
-            fontSize: "1.2rem",
-            boxShadow: "0 0 20px rgba(76, 201, 240, 0.5)",
+          style={styles.cancelButton}
+          onClick={handleCancel}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = "#f72585";
+            e.currentTarget.style.color = "#fff";
           }}
-          onClick={
-            gameData.isUserReady
-              ? () => gameData.cancelReadyUser()
-              : () => gameData.readyUser()
-          }
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent";
+            e.currentTarget.style.color = "#f72585";
+          }}
         >
-          {gameData.isUserReady ? "Annuler" : "Prêt"}
+          Quitter le lobby
         </button>
       </div>
     </div>
   );
-};
-
-export default TournamentPage;
+}

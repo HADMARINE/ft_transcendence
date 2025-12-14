@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { GametypeEnum, useGameData } from '@/util/useGameData';
 
 const ModeSelectionPage: React.FC = () => {
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
@@ -12,6 +13,7 @@ const ModeSelectionPage: React.FC = () => {
   const [showOnlineLoading, setShowOnlineLoading] = useState(false);
 
   const router = useRouter();
+  const gameData = useGameData();
   
   const timeoutRefs = useRef<NodeJS.Timeout[]>([]);
 
@@ -55,8 +57,10 @@ const ModeSelectionPage: React.FC = () => {
 
     if (selectedMode === 'online') {
       timeoutRefs.current.push(
-        setTimeout(() => {
-          setShowOnlineLoading(true);
+        setTimeout(async () => {
+          await gameData.assureConnection();
+          gameData.registerQueue(GametypeEnum.SHOOT);
+          router.push('/shoot/1vs1-online/lobby');
         }, 1500)
       );
     } else {
@@ -94,6 +98,65 @@ const ModeSelectionPage: React.FC = () => {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
+        
+        @keyframes pulse-icon {
+          0%, 100% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: translate(-50%, -50%) scale(1.2);
+            opacity: 0.7;
+          }
+        }
+        
+        .spinner-wheel {
+          width: 100px;
+          height: 100px;
+          border-radius: 50%;
+          border: 6px solid rgba(0, 204, 255, 0.2);
+          border-top: 6px solid #00ccff;
+          border-right: 6px solid #ff6600;
+          animation: spin 1s linear infinite;
+          position: relative;
+          box-shadow: 0 0 30px rgba(0, 204, 255, 0.4),
+                      inset 0 0 20px rgba(255, 102, 0, 0.2);
+        }
+        
+        .spinner-wheel::before {
+          content: '';
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          right: 10px;
+          bottom: 10px;
+          border-radius: 50%;
+          border: 4px solid transparent;
+          border-top: 4px solid #ff6600;
+          border-left: 4px solid #00ccff;
+          animation: spin 0.8s linear infinite reverse;
+        }
+        
+        .spinner-wheel::after {
+          content: '🔍';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 24px;
+          animation: pulse-icon 1.5s ease-in-out infinite;
+        }
+        
+        .searching-dots::after {
+          content: '';
+          animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+          0%, 20% { content: '.'; }
+          40% { content: '..'; }
+          60%, 100% { content: '...'; }
+        }
       `}</style>
 
       {}
@@ -103,11 +166,11 @@ const ModeSelectionPage: React.FC = () => {
             <h2 style={styles.onlineLoadingTitle}>Recherche d'adversaires</h2>
             
             <div style={styles.spinnerContainer}>
-              <div style={styles.spinner}></div>
+              <div className="spinner-wheel"></div>
             </div>
             
             <p style={styles.onlineLoadingText}>
-              En attente d'un adversaire. Cela peut prendre quelques instants...
+              En attente d'un adversaire<span className="searching-dots"></span>
             </p>
             
             <button 

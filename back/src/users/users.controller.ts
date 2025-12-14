@@ -108,6 +108,15 @@ export class UsersController {
     return this.usersService.declineFriendRequest(id, requestId);
   }
 
+  @Delete(':id/friends/:friendId')
+  @Roles(AuthorityEnum.NORMAL)
+  removeFriend(
+    @Param('id') id: string,
+    @Param('friendId') friendId: string,
+  ) {
+    return this.usersService.removeFriend(id, friendId);
+  }
+
   @Patch(':id')
   @Roles(AuthorityEnum.ADMIN)
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {

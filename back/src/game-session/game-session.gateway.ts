@@ -47,11 +47,16 @@ export class GameSessionGateway
   }
 
   @SubscribeMessage('register-queue')
-  registerQueue(
+  async registerQueue(
     @ConnectedSocket() client: Socket,
     @MessageBody() registerQueueDto: RegisterQueueDto,
   ) {
-    this.gameSessionService.registerQueue(client, registerQueueDto);
+    this.logger.debug(`Gateway received register-queue: ${JSON.stringify(registerQueueDto)}`);
+    try {
+      await this.gameSessionService.registerQueue(client, registerQueueDto);
+    } catch (error) {
+      this.logger.error(`Error in registerQueue: ${error}`);
+    }
   }
 
   @SubscribeMessage('unregister-queue')
@@ -99,6 +104,22 @@ export class GameSessionGateway
     @MessageBody() data: string,
   ) {
     this.gameSessionService.gamedataWinner(client, data);
+  }
+
+  @SubscribeMessage('player-config')
+  playerConfig(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { roomId: string; tournamentId?: string; matchId?: string; color: string; paddleSpeed?: number; ready: boolean },
+  ) {
+    this.gameSessionService.handlePlayerConfig(client, data);
+  }
+
+  @SubscribeMessage('paddle-move')
+  paddleMove(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { roomId: string; direction: 'up' | 'down' | 'stop' },
+  ) {
+    this.gameSessionService.handlePaddleMove(client, data);
   }
 
   @SubscribeMessage('user-status-changed')
