@@ -80,6 +80,7 @@ export class UsersService {
       username: user.nickname,
       email: user.email,
       authority: user.authority.includes(AuthorityEnum.ADMIN) ? 'ADMIN' : 'NORMAL',
+      avatar: user.avatar,
     };
   }
 
@@ -383,5 +384,18 @@ export class UsersService {
 
     await this.usersRepository.save(user);
     return { success: true, status: user.status };
+  }
+
+  async updateAvatar(userId: string, avatarUrl: string) {
+    console.log('updateAvatar called with:', { userId, avatarUrl });
+    const user = await this.usersRepository.findOneBy({ id: userId });
+    if (!user) {
+      throw new DataNotFoundException({ name: 'user' });
+    }
+
+    user.avatar = avatarUrl;
+    await this.usersRepository.save(user);
+    console.log('Avatar saved successfully for user:', userId);
+    return { success: true, avatar: avatarUrl };
   }
 }

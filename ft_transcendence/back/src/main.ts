@@ -23,6 +23,11 @@ async function bootstrap() {
   app.useStaticAssets({
     root: join(__dirname, '..', 'public'),
     prefix: '/public/',
+    decorateReply: false,
+    setHeaders: (res) => {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    },
   });
 
   if (process.env.NODE_ENV !== 'production') {
@@ -50,6 +55,15 @@ async function bootstrap() {
     secret: process.env.COOKIE_SECRET,
   });
   await app.register(helmet);
+  
+  // Enregistrer multipart pour les uploads de fichiers
+  // Décommentez après avoir installé: yarn add @fastify/multipart
+  // const fastifyMultipart = require('@fastify/multipart');
+  // await app.register(fastifyMultipart, {
+  //   limits: {
+  //     fileSize: 5 * 1024 * 1024, // 5MB max
+  //   },
+  // });
 
   app.useGlobalPipes(
     new ValidationPipe({

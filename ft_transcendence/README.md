@@ -12,3 +12,7 @@ env password : password
 
 Pour obtenir les details de l'user
 Utilise : getUserProfile(id: string)
+
+
+TODO:
+bug fix ready ?

@@ -6,6 +6,7 @@ import { Observable } from 'rxjs';
 import { AuthorizationFailedException } from 'src/errors/exceptions/authorization-failed.exception';
 import { JwtTokenExpiredException } from 'src/errors/exceptions/jwt-token-expired.exception';
 import { AuthService } from '../auth.service';
+import { IS_PUBLIC_KEY } from 'src/decorators/public.decorator';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -21,6 +22,13 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   canActivate(
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) {
+      return true;
+    }
     return super.canActivate(context);
   }
 

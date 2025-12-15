@@ -2,11 +2,15 @@ import { User } from 'src/users/user.entity';
 import { OrientationEnum } from '../enum/orientation.enum';
 
 export interface ShootData {
+  gameWidth: number;
+  gameHeight: number;
   player1: {
     user: User;
     score: number;
     x: number;
     y: number;
+    width: number;
+    height: number;
     orentation: OrientationEnum;
     balls: {
       x: number;
@@ -18,10 +22,18 @@ export interface ShootData {
     score: number;
     x: number;
     y: number;
+    width: number;
+    height: number;
     orentation: OrientationEnum;
     balls: {
       x: number;
       y: number;
     }[];
   };
+  walls: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }[];
 }

@@ -5,6 +5,7 @@ export type UserProfile = {
   username: string;
   email: string;
   authority: "NORMAL" | "ADMIN";
+  avatar?: string;
 };
 
 export async function getCurrentUser(): Promise<UserProfile | null> {
@@ -99,4 +100,37 @@ export async function updateUserStatus(
     return result.data;
   }
   return { success: false };
+}
+
+export async function uploadAvatar(
+  file: File
+): Promise<{ success: boolean; avatarUrl?: string; message?: string }> {
+  try {
+    // Convertir le fichier en base64
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const result = await client.post('/users/me/avatar', {
+      image: base64,
+      filename: file.name,
+    });
+    
+    if (result.result === true && result.data) {
+      return { success: true, avatarUrl: result.data.avatar };
+    } else {
+      return { 
+        success: false, 
+        message: result.data?.message || 'Failed to upload avatar' 
+      };
+    }
+  } catch (error) {
+    return { 
+      success: false, 
+      message: 'Network error while uploading avatar' 
+    };
+  }
 }

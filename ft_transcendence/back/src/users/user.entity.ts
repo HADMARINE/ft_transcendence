@@ -56,4 +56,7 @@ export class User {
 
   @Column({ type: 'text', nullable: true })
   currentGameId?: string;
+
+  @Column({ type: 'text', nullable: true })
+  avatar?: string;
 }

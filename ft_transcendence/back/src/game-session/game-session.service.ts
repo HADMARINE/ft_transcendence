@@ -1675,11 +1675,15 @@ export class GameSessionService {
           activeGameSession.data = pongData;
         } else if (activeGameSession.gametype === GametypeEnum.SHOOT) {
           const shootData: ShootData = {
+            gameWidth: 1700,
+            gameHeight: 750,
             player1: {
               user: users[0].user,
               score: 0,
               x: 150,
               y: 350,
+              width: 75,
+              height: 100,
               orentation: OrientationEnum.RIGHT,
               balls: [],
             },
@@ -1688,9 +1692,12 @@ export class GameSessionService {
               score: 0,
               x: 1475,
               y: 350,
+              width: 75,
+              height: 100,
               orentation: OrientationEnum.LEFT,
               balls: [],
             },
+            walls: [],
           };
           activeGameSession.data = shootData;
         }
@@ -1841,13 +1848,35 @@ export class GameSessionService {
     }
 
     if (activeGameSession.data?.player1.user.id === user.id) {
-      activeGameSession.data.player1.x = data.x;
-      activeGameSession.data.player1.y = data.y;
+      // Vérifier la collision avec les murs avant de mettre à jour la position
+      const wouldCollide = this.checkPlayerWallCollision(
+        data.x,
+        data.y,
+        activeGameSession.data.player1.width,
+        activeGameSession.data.player1.height,
+        activeGameSession.data.walls
+      );
+      
+      if (!wouldCollide) {
+        activeGameSession.data.player1.x = data.x;
+        activeGameSession.data.player1.y = data.y;
+      }
       activeGameSession.data.player1.orentation = data.orientation;
       activeGameSession.data.player1.balls = data.balls;
     } else if (activeGameSession.data?.player2.user.id === user.id) {
-      activeGameSession.data.player2.x = data.x;
-      activeGameSession.data.player2.y = data.y;
+      // Vérifier la collision avec les murs avant de mettre à jour la position
+      const wouldCollide = this.checkPlayerWallCollision(
+        data.x,
+        data.y,
+        activeGameSession.data.player2.width,
+        activeGameSession.data.player2.height,
+        activeGameSession.data.walls
+      );
+      
+      if (!wouldCollide) {
+        activeGameSession.data.player2.x = data.x;
+        activeGameSession.data.player2.y = data.y;
+      }
       activeGameSession.data.player2.orentation = data.orientation;
       activeGameSession.data.player2.balls = data.balls;
     } else {
@@ -2210,12 +2239,28 @@ export class GameSessionService {
         const normalizedX = data.move.x / length;
         const normalizedY = data.move.y / length;
         
-        player.x += normalizedX * player.speed;
-        player.y += normalizedY * player.speed;
+        // Calculer la nouvelle position
+        const newX = player.x + normalizedX * player.speed;
+        const newY = player.y + normalizedY * player.speed;
 
-        // Limites du terrain
-        player.x = Math.max(0, Math.min(shootData.gameWidth - player.width, player.x));
-        player.y = Math.max(0, Math.min(shootData.gameHeight - player.height, player.y));
+        // Vérifier les limites du terrain
+        const boundedX = Math.max(0, Math.min(shootData.gameWidth - player.width, newX));
+        const boundedY = Math.max(0, Math.min(shootData.gameHeight - player.height, newY));
+
+        // Vérifier la collision avec les murs
+        const wouldCollide = this.checkPlayerWallCollision(
+          boundedX,
+          boundedY,
+          player.width,
+          player.height,
+          shootData.walls
+        );
+
+        // Appliquer le mouvement seulement s'il n'y a pas de collision
+        if (!wouldCollide) {
+          player.x = boundedX;
+          player.y = boundedY;
+        }
 
         // Sauvegarder la dernière direction pour le tir
         player.lastDirection = { x: normalizedX, y: normalizedY };
@@ -2258,12 +2303,29 @@ export class GameSessionService {
           ? player.lastDirection 
           : { x: isPlayer1 ? 1 : -1, y: 0 };
 
-        player.x += direction.x * 100;
-        player.y += direction.y * 100;
+        // Calculer la nouvelle position après le dash
+        const newX = player.x + direction.x * 100;
+        const newY = player.y + direction.y * 100;
 
-        // Limites du terrain
-        player.x = Math.max(0, Math.min(shootData.gameWidth - player.width, player.x));
-        player.y = Math.max(0, Math.min(shootData.gameHeight - player.height, player.y));
+        // Vérifier les limites du terrain
+        const boundedX = Math.max(0, Math.min(shootData.gameWidth - player.width, newX));
+        const boundedY = Math.max(0, Math.min(shootData.gameHeight - player.height, newY));
+
+        // Vérifier la collision avec les murs
+        const wouldCollide = this.checkPlayerWallCollision(
+          boundedX,
+          boundedY,
+          player.width,
+          player.height,
+          shootData.walls
+        );
+
+        // Appliquer le dash seulement s'il n'y a pas de collision
+        if (!wouldCollide) {
+          player.x = boundedX;
+          player.y = boundedY;
+        }
+        // Si collision, le joueur reste à sa position actuelle
 
         // Réactiver le dash après le cooldown
         setTimeout(() => {
@@ -2276,6 +2338,9 @@ export class GameSessionService {
   private initializeShootGame(session: ActiveGameSession<any>) {
     const player1Config = session.lobbyData[session.players[0].user.id];
     const player2Config = session.lobbyData[session.players[1].user.id];
+
+    // Si un des joueurs choisit map2, on utilise map2
+    const selectedMap = player1Config?.map === 'map2' || player2Config?.map === 'map2' ? 'map2' : 'map1';
 
     session.data = {
       gameWidth: 1700,
@@ -2318,7 +2383,7 @@ export class GameSessionService {
       },
       fireballs: [],
       particles: [],
-      walls: this.getShootWalls(player1Config?.map || 'map1'),
+      walls: this.getShootWalls(selectedMap),
       gameLoopInterval: null,
     };
 
@@ -2351,6 +2416,27 @@ export class GameSessionService {
       ];
     }
     return [];
+  }
+
+  private checkPlayerWallCollision(
+    playerX: number,
+    playerY: number,
+    playerWidth: number,
+    playerHeight: number,
+    walls: any[]
+  ): boolean {
+    for (const wall of walls) {
+      // Vérifier si les rectangles se chevauchent (AABB collision)
+      if (
+        playerX < wall.x + wall.width &&
+        playerX + playerWidth > wall.x &&
+        playerY < wall.y + wall.height &&
+        playerY + playerHeight > wall.y
+      ) {
+        return true; // Collision détectée
+      }
+    }
+    return false; // Pas de collision
   }
 
   private updateShootGame(session: ActiveGameSession<any>) {

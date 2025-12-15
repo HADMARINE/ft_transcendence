@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiUser, FiMail, FiLock, FiUsers, FiUserPlus, FiSettings, FiCheck, FiX, FiBarChart2 } from 'react-icons/fi';
-import { getCurrentUser, updateUserEmail, updateUserPassword, updateUserStatus, updateUserProfile, updateUserNickname, UserProfile } from '../../api/users';
+import { FiUser, FiMail, FiLock, FiUsers, FiUserPlus, FiSettings, FiCheck, FiX, FiBarChart2, FiCamera } from 'react-icons/fi';
+import { getCurrentUser, updateUserEmail, updateUserPassword, updateUserStatus, updateUserProfile, updateUserNickname, uploadAvatar, UserProfile } from '../../api/users';
 import { getFriends, getFriendRequests, searchUsers, sendFriendRequest, acceptFriendRequest, declineFriendRequest, removeFriend, SearchResult, FriendRequest as ApiFriendRequest, Friend } from '../../api/friends';
 import { getUserStats, UserStats } from '../../api/stats';
 import { logout as logoutApi } from '../../api/auth';
@@ -11,11 +11,14 @@ import { useGameData } from '@/util/useGameData';
 const ProfilePage = () => {
   const router = useRouter();
   const gameData = useGameData();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarTimestamp, setAvatarTimestamp] = useState(Date.now());
   
   // États pour les données utilisateur
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -44,7 +47,9 @@ const ProfilePage = () => {
   async function loadCurrentUser() {
     setIsLoading(true);
     try {
+      console.log('Loading current user...');
       const profile = await getCurrentUser();
+      console.log('Profile loaded:', profile);
       if (profile) {
         setUserId(profile.id);
         setUserProfile(profile);
@@ -53,6 +58,7 @@ const ProfilePage = () => {
         // Set status to online when user opens settings
         await updateUserStatus('online');
       } else {
+        console.log('No profile found, redirecting to login');
         router.push('/login');
       }
     } catch (error) {
@@ -230,6 +236,55 @@ const ProfilePage = () => {
       alert('Erreur lors de la déconnexion');
     } finally {
       setIsLoggingOut(false);
+    }
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Vérifier le type de fichier
+    if (!file.type.startsWith('image/')) {
+      alert('Veuillez sélectionner une image');
+      return;
+    }
+
+    // Vérifier la taille (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('L\'image ne doit pas dépasser 5MB');
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const result = await uploadAvatar(file);
+      console.log('Upload result:', result);
+      if (result.success && result.avatarUrl) {
+        // Mettre à jour le timestamp pour forcer le rechargement de l'image
+        setAvatarTimestamp(Date.now());
+        // Recharger le profil pour obtenir la nouvelle URL d'avatar
+        await loadCurrentUser();
+        // Forcer le rafraîchissement de l'image en ajoutant un timestamp
+        setUserProfile(prev => prev ? { ...prev, avatar: result.avatarUrl } : null);
+        console.log('Avatar URL:', result.avatarUrl);
+        alert('Photo de profil mise à jour avec succès!');
+      } else {
+        console.error('Upload failed:', result);
+        alert(`Erreur: ${result.message || 'Échec de l\'upload'}`);
+      }
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      alert('Une erreur est survenue lors de l\'upload');
+    } finally {
+      setIsUploadingAvatar(false);
+      // Reset le input pour permettre de sélectionner la même image à nouveau
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -525,30 +580,60 @@ const ProfilePage = () => {
               </div>
               
               <div style={{ flex: 1, minWidth: '250px' }}>
-                <div style={{ 
-                  width: '120px', 
-                  height: '120px', 
-                  borderRadius: '50%', 
-                  background: 'linear-gradient(45deg, #4cc9f0, #4361ee)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 25px',
-                  fontSize: '3rem',
-                }}>
-                  {userProfile.username ? userProfile.username.charAt(0).toUpperCase() : '?'}
+                <div style={{ position: 'relative', width: '120px', margin: '0 auto 25px' }}>
+                  <div style={{ 
+                    width: '120px', 
+                    height: '120px', 
+                    borderRadius: '50%', 
+                    backgroundColor: userProfile.avatar ? 'transparent' : '#4cc9f0',
+                    backgroundImage: userProfile.avatar 
+                      ? `url(${process.env.NEXT_PUBLIC_API_URI || 'http://localhost:3000'}${userProfile.avatar}?t=${avatarTimestamp})` 
+                      : 'linear-gradient(45deg, #4cc9f0, #4361ee)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '3rem',
+                    overflow: 'hidden',
+                  }}>
+                    {!userProfile.avatar && (userProfile.username ? userProfile.username.charAt(0).toUpperCase() : '?')}
+                  </div>
+                  <button
+                    onClick={handleAvatarClick}
+                    disabled={isUploadingAvatar}
+                    style={{
+                      position: 'absolute',
+                      bottom: '0',
+                      right: '0',
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(45deg, #4cc9f0, #4361ee)',
+                      border: '2px solid #1a1a2e',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: isUploadingAvatar ? 'not-allowed' : 'pointer',
+                      opacity: isUploadingAvatar ? 0.6 : 1,
+                    }}
+                  >
+                    <FiCamera size={20} color="white" />
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    style={{ display: 'none' }}
+                  />
                 </div>
                 
-                <button 
-                  style={{ 
-                    ...buttonStyle, 
-                    width: '100%',
-                    background: 'rgba(76, 201, 240, 0.2)',
-                    border: '1px solid rgba(76, 201, 240, 0.5)'
-                  }}
-                >
-                  <FiSettings /> Modifier l'avatar
-                </button>
+                {isUploadingAvatar && (
+                  <div style={{ textAlign: 'center', color: '#4cc9f0', marginBottom: '15px' }}>
+                    Upload en cours...
+                  </div>
+                )}
               </div>
             </div>
           </div>

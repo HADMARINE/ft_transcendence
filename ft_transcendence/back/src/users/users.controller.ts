@@ -8,8 +8,15 @@ import {
   Delete,
   Query,
   Req,
+  BadRequestException,
+  Res,
+  NotFoundException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
+import { createWriteStream } from 'fs';
+import { pipeline } from 'stream/promises';
+import { join } from 'path';
+import { randomBytes } from 'crypto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateEmailDto } from './dto/update-email.dto';
@@ -20,10 +27,50 @@ import { Roles } from 'src/decorators/roles.decorator';
 import { AuthorityEnum } from './enums/authority.enum';
 import { RequestWithUser } from 'src/auth/interfaces/request-with-user.interface';
 import { Throttle } from '@nestjs/throttler';
+import { FastifyReply } from 'fastify';
+import { Public } from 'src/decorators/public.decorator';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Public()
+  @Get('avatars/:filename')
+  async getAvatar(
+    @Param('filename') filename: string,
+    @Res() res: FastifyReply,
+  ) {
+    try {
+      const fs = await import('fs/promises');
+      const filePath = join(process.cwd(), 'public', 'avatars', filename);
+      
+      // Vérifier que le fichier existe
+      await fs.access(filePath);
+      
+      // Déterminer le type MIME
+      const ext = filename.split('.').pop()?.toLowerCase();
+      const mimeTypes: Record<string, string> = {
+        'png': 'image/png',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'gif': 'image/gif',
+      };
+      const mimeType = mimeTypes[ext || ''] || 'application/octet-stream';
+      
+      // Lire le fichier
+      const fileBuffer = await fs.readFile(filePath);
+      
+      // Définir les en-têtes CORS
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+      res.header('Content-Type', mimeType);
+      res.header('Cache-Control', 'public, max-age=31536000');
+      
+      return res.send(fileBuffer);
+    } catch (error) {
+      throw new NotFoundException('Avatar not found');
+    }
+  }
 
   @Post()
   @Throttle({ default: { limit: 5, ttl: 300 } })
@@ -162,6 +209,70 @@ export class UsersController {
     );
   }
 
+  @Post('me/avatar')
+  @Roles(AuthorityEnum.NORMAL)
+  async uploadAvatar(
+    @Req() request: RequestWithUser,
+    @Body() body: { image: string; filename: string }
+  ) {
+    const user = request.user;
+    
+    try {
+      
+      if (!body.image || !body.filename) {
+        throw new BadRequestException('No image data provided');
+      }
+
+      // Extraire les données base64
+      const matches = body.image.match(/^data:image\/([a-zA-Z]*);base64,([^\"]*)/);
+      if (!matches || matches.length !== 3) {
+        throw new BadRequestException('Invalid image format');
+      }
+
+      const imageType = matches[1];
+      const base64Data = matches[2];
+
+      // Vérifier le type d'image
+      const allowedTypes = ['jpeg', 'jpg', 'png', 'gif'];
+      if (!allowedTypes.includes(imageType.toLowerCase())) {
+        throw new BadRequestException('Only JPEG, PNG, and GIF images are allowed');
+      }
+
+      // Générer un nom de fichier unique
+      const uniqueFilename = `avatar-${randomBytes(16).toString('hex')}-${Date.now()}.${imageType}`;
+      const uploadPath = join(process.cwd(), 'public', 'avatars');
+      const filePath = join(uploadPath, uniqueFilename);
+
+      // Créer le répertoire s'il n'existe pas
+      const fs = await import('fs/promises');
+      await fs.mkdir(uploadPath, { recursive: true });
+
+      // Sauvegarder le fichier
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      // Vérifier la taille (5MB max)
+      if (buffer.length > 5 * 1024 * 1024) {
+        throw new BadRequestException('Image size must not exceed 5MB');
+      }
+
+      await fs.writeFile(filePath, buffer);
+
+      const avatarUrl = `/users/avatars/${uniqueFilename}`;
+      await this.usersService.updateAvatar(user.id, avatarUrl);
+
+      return {
+        success: true,
+        avatar: avatarUrl,
+      };
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to upload avatar');
+    }
+  }
+
   @Patch('me')
   @Roles(AuthorityEnum.NORMAL)
   updateMe(
@@ -179,7 +290,7 @@ export class UsersController {
 
   @Delete('me')
   @Roles(AuthorityEnum.NORMAL)
-  removeMe(@Req() request: RequestWithUser) {
+  deleteMe(@Req() request: RequestWithUser) {
     return this.usersService.remove(request.user.id);
   }
 }
