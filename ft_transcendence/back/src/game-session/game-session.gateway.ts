@@ -109,7 +109,7 @@ export class GameSessionGateway
   @SubscribeMessage('player-config')
   playerConfig(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string; tournamentId?: string; matchId?: string; color: string; paddleSpeed?: number; ready: boolean },
+    @MessageBody() data: { roomId: string; tournamentId?: string; matchId?: string; color: string; paddleSpeed?: number; mapId?: string; ready: boolean },
   ) {
     this.gameSessionService.handlePlayerConfig(client, data);
   }

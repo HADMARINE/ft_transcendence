@@ -259,12 +259,19 @@ export default function LobbyPage() {
       router.push("/shoot");
     };
 
+    const onMatchConfig = (data: { roomId: string; gametype: string; player1: PlayerInfo; player2: PlayerInfo }) => {
+      console.log("🎮 Match config received in lobby:", data);
+      // Pour un duel 1v1, rediriger vers la page de configuration
+      router.push(`/shoot/1vs1online/Config?roomId=${data.roomId}&player1=${encodeURIComponent(data.player1.nickname)}&player2=${encodeURIComponent(data.player2.nickname)}`);
+    };
+
     gameData.client.on("lobby-created", onLobbyCreated);
     gameData.client.on("lobby-updated", onLobbyUpdated);
     gameData.client.on("lobby-countdown", onLobbyCountdown);
     gameData.client.on("tournament-starting", onTournamentStarting);
     gameData.client.on("tournament-bracket", onTournamentBracket);
     gameData.client.on("lobby-cancelled", onLobbyCancelled);
+    gameData.client.on("match-config", onMatchConfig);
 
     return () => {
       gameData.client?.off("lobby-created", onLobbyCreated);
@@ -273,6 +280,7 @@ export default function LobbyPage() {
       gameData.client?.off("tournament-starting", onTournamentStarting);
       gameData.client?.off("tournament-bracket", onTournamentBracket);
       gameData.client?.off("lobby-cancelled", onLobbyCancelled);
+      gameData.client?.off("match-config", onMatchConfig);
     };
   }, [gameData.client, roomId, router]);
 

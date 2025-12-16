@@ -634,8 +634,72 @@ export class GameSessionService {
     }
 
     const playerCountForFormat = lobby.players.length;
-    const format = playerCountForFormat <= 2 ? 'DUEL' : 
-                   playerCountForFormat <= 4 ? 'TOURNAMENT_4' : 'TOURNAMENT_8';
+
+    // Si c'est un duel (2 joueurs), créer un match 1v1 simple avec page de config
+    if (playerCountForFormat === 2) {
+      this.logger.debug(`Creating 1v1 match for lobby ${lobby.id}`);
+      
+      const roomId = lobby.id;
+      const players = lobby.players;
+
+      // Créer la session de jeu
+      const activeGameSession: ActiveGameSession<any> = {
+        id: roomId,
+        gametype,
+        status: IngameStatus.LOBBY,
+        players: players,
+        data: null as any,
+        lobbyData: {},
+        createdAt: Date.now(),
+        tournamentHistory: [],
+        classNumber: 0,
+        winners: [],
+        room: this.server.to(roomId),
+        currentClass: 0,
+        mapVoteData: [],
+      };
+
+      // Initialiser lobbyData avec des couleurs par défaut
+      activeGameSession.lobbyData[players[0].user.id] = {
+        ready: false,
+        color: '#4cc9f0',
+        map: 'classic',
+      };
+      activeGameSession.lobbyData[players[1].user.id] = {
+        ready: false,
+        color: '#f72585',
+        map: 'classic',
+      };
+
+      this.activeGameSessions[roomId] = activeGameSession;
+
+      // Faire rejoindre les joueurs à la room du match
+      for (const player of players) {
+        player.client.leave(lobbyRoom);
+        player.client.join(roomId);
+      }
+
+      // Envoyer les joueurs vers la page de configuration
+      const matchConfigData = {
+        roomId,
+        gametype,
+        player1: { id: players[0].user.id, nickname: players[0].user.nickname },
+        player2: { id: players[1].user.id, nickname: players[1].user.nickname },
+      };
+
+      this.logger.log(`🎮 Sending match-config for 1v1 lobby match to ${players[0].user.nickname} and ${players[1].user.nickname}`);
+      
+      for (const player of players) {
+        player.client.emit('match-config', matchConfigData);
+      }
+
+      // Supprimer le lobby d'attente
+      delete this.waitingLobbies[gametype];
+      return;
+    }
+
+    // Sinon, créer un tournoi
+    const format = playerCountForFormat <= 4 ? 'TOURNAMENT_4' : 'TOURNAMENT_8';
 
     // Émettre d'abord l'événement tournament-starting au lobby
     // pour que le frontend puisse naviguer vers la page tournoi
@@ -1128,7 +1192,7 @@ export class GameSessionService {
   }
 
   // Gérer la configuration des joueurs
-  async handlePlayerConfig(client: Socket, data: { roomId: string; tournamentId?: string; matchId?: string; color: string; paddleSpeed?: number; ready: boolean }) {
+  async handlePlayerConfig(client: Socket, data: { roomId: string; tournamentId?: string; matchId?: string; color: string; paddleSpeed?: number; mapId?: string; ready: boolean }) {
     const user = client.handshake.auth.user as User;
     const session = this.activeGameSessions[data.roomId];
 
@@ -1149,21 +1213,41 @@ export class GameSessionService {
       ready: data.ready,
       color: data.color,
       paddleSpeed: data.paddleSpeed || 20,
-      map: 'classic',
+      map: data.mapId || 'classic',
     };
 
     this.logger.debug(`Player ${user.nickname} config: ready=${data.ready}, color=${data.color}, speed=${data.paddleSpeed}`);
 
-    // Notifier l'autre joueur de la mise à jour
-    const room = this.server.to(data.roomId);
-    room.emit('config-update', {
+    // Notifier UNIQUEMENT l'autre joueur de la mise à jour (pas le joueur qui envoie)
+    this.logger.debug(`Broadcasting config-update to other players in room ${data.roomId}`);
+    
+    const configUpdateData = {
       roomId: data.roomId,
       userId: user.id,
       nickname: user.nickname,
       ready: data.ready,
       color: data.color,
       paddleSpeed: data.paddleSpeed,
-    });
+      mapId: data.mapId,
+    };
+    
+    // Envoyer à tous les joueurs de la session sauf l'émetteur
+    for (const player of session.players) {
+      if (player.user.id !== user.id) {
+        this.logger.debug(`  → Sending config-update to ${player.user.nickname} (socket ${player.client.id})`);
+        player.client.emit('config-update', configUpdateData);
+      }
+    }
+    
+    // Envoyer aussi aux spectateurs s'il y en a
+    if (session.tournamentId) {
+      const tournament = this.activeTournaments[session.tournamentId];
+      if (tournament?.spectators) {
+        for (const spectator of tournament.spectators) {
+          spectator.client.emit('config-update', configUpdateData);
+        }
+      }
+    }
 
     // Vérifier si les deux joueurs sont prêts
     const allReady = session.players.every(p => session.lobbyData[p.user.id]?.ready === true);

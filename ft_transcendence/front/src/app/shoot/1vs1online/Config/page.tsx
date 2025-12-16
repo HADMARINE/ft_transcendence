@@ -66,9 +66,9 @@ const GameCustomisation: React.FC = () => {
     const handleConfigUpdate = (data: any) => {
       console.log('Config update received:', data);
       console.log('Data roomId:', data.roomId, 'Current roomId:', roomId);
-      console.log('Data userId:', data.userId, 'My userId:', myUserId);
       
-      if (data.roomId === roomId && data.userId !== myUserId) {
+      // Le backend envoie déjà uniquement aux autres joueurs
+      if (data.roomId === roomId) {
         console.log('Updating opponent config...');
         if (data.color) setOpponentColor(data.color);
         if (data.mapId) setSelectedMapId(data.mapId);
@@ -77,7 +77,7 @@ const GameCustomisation: React.FC = () => {
           setOpponentReady(data.ready);
         }
       } else {
-        console.log('Ignoring config update - wrong room or same user');
+        console.log('Ignoring config update - wrong room');
       }
     };
 

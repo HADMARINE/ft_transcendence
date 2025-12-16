@@ -161,25 +161,12 @@ export default function MatchConfigPage() {
   const [isReady, setIsReady] = useState(false);
   const [opponentReady, setOpponentReady] = useState(false);
   const [matchData, setMatchData] = useState<any>(null);
-  const [myUserId, setMyUserId] = useState<string>('');
   const hasNavigated = useRef(false);
 
   const roomId = searchParams.get('roomId');
   const tournamentId = searchParams.get('tournamentId');
   const matchId = searchParams.get('matchId');
-
-  useEffect(() => {
-    // Get user ID from localStorage or context
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const user = JSON.parse(storedUser);
-        setMyUserId(user.id);
-      } catch (e) {
-        console.error('Error parsing user from localStorage:', e);
-      }
-    }
-  }, []);
+  const myUserId = gameData.user?.id;
 
   useEffect(() => {
     const client = gameData.client;
@@ -193,8 +180,16 @@ export default function MatchConfigPage() {
     // Écouter les mises à jour de config des autres joueurs
     const handleConfigUpdate = (data: any) => {
       console.log('match-config: Received config-update', data);
-      if (data.roomId === roomId && data.userId !== myUserId) {
-        setOpponentReady(data.ready);
+      console.log('Data roomId:', data.roomId, 'Current roomId:', roomId);
+      
+      // Le backend envoie déjà uniquement aux autres joueurs
+      if (data.roomId === roomId) {
+        console.log('Updating opponent ready status to:', data.ready);
+        if (data.ready !== undefined) {
+          setOpponentReady(data.ready);
+        }
+      } else {
+        console.log('Ignoring config update - wrong room');
       }
     };
 
@@ -231,7 +226,7 @@ export default function MatchConfigPage() {
       client.off('ingame-comm', handleIngameComm);
       client.off('match-config', handleMatchConfig);
     };
-  }, [gameData.client, roomId, myUserId, router]);
+  }, [gameData.client, roomId, myUserId, router, tournamentId, matchId]);
 
   const handleReady = () => {
     const client = gameData.client;
