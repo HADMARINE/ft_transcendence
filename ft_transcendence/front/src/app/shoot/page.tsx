@@ -72,7 +72,7 @@ const ModeSelectionPage: React.FC = () => {
     setSelectedMode(mode);
   };
 
-  const handlePlay = () => {
+  const handlePlay = async () => {
     if (!selectedMode) {
       setNotification({
         message: 'Veuillez sélectionner un mode de jeu',
@@ -90,7 +90,7 @@ const ModeSelectionPage: React.FC = () => {
 
     if (selectedMode === 'online') {
       setShowQueueModal(true);
-      gameData.assureConnection();
+      await gameData.assureConnection();
       gameData.registerQueue(GametypeEnum.SHOOT);
     } else {
       const modeNames: Record<string, string> = {

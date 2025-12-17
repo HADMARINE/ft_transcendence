@@ -183,7 +183,7 @@ export default function LobbyPage() {
   const [players, setPlayers] = useState<PlayerInfo[]>([]);
   const [timeRemaining, setTimeRemaining] = useState(60);
   const [roomId, setRoomId] = useState<string | null>(searchParams.get("roomId"));
-  const maxPlayers = 8;
+  const maxPlayers = 4;
 
   useEffect(() => {
     const lobbyDataStr = sessionStorage.getItem('lobbyData');
@@ -303,9 +303,7 @@ export default function LobbyPage() {
   };
 
   const getFormatDescription = (playerCount: number): { format: string; description: string } => {
-    if (playerCount >= 8) {
-      return { format: "Tournoi 8 joueurs", description: "Quarts de finale → Demi-finales → Finale" };
-    } else if (playerCount >= 4) {
+    if (playerCount >= 4) {
       return { format: "Tournoi 4 joueurs", description: "Demi-finales → Finale" };
     } else {
       return { format: "Duel 1v1", description: "Match simple" };

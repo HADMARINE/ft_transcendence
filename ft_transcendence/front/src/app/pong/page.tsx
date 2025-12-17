@@ -326,6 +326,7 @@ export default function PongModesPage() {
       
       await gameData.assureConnection();
       console.log("  After assureConnection, client:", gameData.client);
+      console.log("  Client connected:", gameData.client?.connected);
       
       gameData.registerQueue(GametypeEnum.PONG);
       console.log("  registerQueue called");

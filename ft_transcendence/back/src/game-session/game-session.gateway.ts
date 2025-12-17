@@ -64,6 +64,14 @@ export class GameSessionGateway
     this.gameSessionService.unregisterQueue(client);
   }
 
+  @SubscribeMessage('leave-lobby')
+  leaveLobby(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { gametype: string },
+  ) {
+    this.gameSessionService.removePlayerFromLobby(client, data.gametype as any);
+  }
+
   @SubscribeMessage('ready-user')
   readyUser(@ConnectedSocket() client: Socket) {
     this.gameSessionService.readyUser(client);

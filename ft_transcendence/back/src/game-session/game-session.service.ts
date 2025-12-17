@@ -158,7 +158,7 @@ export class GameSessionService {
     }
 
     // Remove the user from any waiting lobby (nouveau système dynamique)
-    for (const [gametype, lobby] of Object.entries(this.waitingLobbies)) {
+    for (const [lobbyId, lobby] of this.waitingLobbies.entries()) {
       const playerIdx = lobby.players.findIndex((p) => p.user.id === user?.id);
       if (playerIdx !== -1) {
         lobby.players.splice(playerIdx, 1);
@@ -170,7 +170,7 @@ export class GameSessionService {
           // Plus personne dans le lobby, supprimer
           this.logger.debug(`Waiting lobby ${lobby.id} is now empty, deleting...`);
           if (lobby.timer) clearInterval(lobby.timer);
-          delete this.waitingLobbies[gametype];
+          this.waitingLobbies.delete(lobbyId);
         } else {
           // Notifier les autres joueurs
           const playersInfo = lobby.players.map((p) => ({
@@ -181,10 +181,10 @@ export class GameSessionService {
 
           this.server.to(`lobby-${lobby.id}`).emit('lobby-updated', {
             roomId: lobby.id,
-            gametype,
+            gametype: lobby.gametype,
             players: playersInfo,
             timeRemaining: lobby.timeRemaining,
-            maxPlayers: 8,
+            maxPlayers: 4,
           });
 
           this.server.to(`lobby-${lobby.id}`).emit('player-disconnected', {
@@ -433,12 +433,12 @@ export class GameSessionService {
     this.userQueue.forEach((userQueue) => {
       if (
         userQueue.gametype === GametypeEnum.PONG &&
-        queue[GametypeEnum.PONG].length < 8
+        queue[GametypeEnum.PONG].length < 4
       ) {
         queue[GametypeEnum.PONG].push(userQueue);
       } else if (
         userQueue.gametype === GametypeEnum.SHOOT &&
-        queue[GametypeEnum.SHOOT].length < 8
+        queue[GametypeEnum.SHOOT].length < 4
       ) {
         queue[GametypeEnum.SHOOT].push(userQueue);
       }
@@ -447,15 +447,15 @@ export class GameSessionService {
     return queue;
   }
 
-  // Lobbies d'attente actifs (un par gametype)
-  readonly waitingLobbies: Record<string, {
+  // Lobbies d'attente actifs (plusieurs lobbies possibles par gametype)
+  readonly waitingLobbies: Map<string, {
     id: string;
     gametype: GametypeEnum;
     players: UserQueue[];
     createdAt: Date;
     timer: NodeJS.Timeout | null;
     timeRemaining: number;
-  }> = {};
+  }> = new Map();
 
   handleGameQueue() {
     this.logger.debug('=== handleGameQueue START ===');
@@ -472,15 +472,41 @@ export class GameSessionService {
       
       if (playersInQueue.length === 0) continue;
 
-      const existingLobby = this.waitingLobbies[gametype];
+      this.logger.debug(`Processing ${playersInQueue.length} players in queue for ${gametype}`);
 
-      if (existingLobby) {
-        // Lobby existe déjà - ajouter les nouveaux joueurs
-        this.addPlayersToWaitingLobby(gametype, playersInQueue);
-      } else if (playersInQueue.length >= 2) {
-        // Pas de lobby et 2+ joueurs - créer un nouveau lobby
-        this.createWaitingLobby(gametype, playersInQueue);
+      // Copier la liste des joueurs à traiter
+      let remainingPlayers = [...playersInQueue];
+
+      // D'abord, remplir les lobbies existants non pleins
+      for (const [lobbyId, lobby] of this.waitingLobbies.entries()) {
+        if (lobby.gametype !== gametype || lobby.players.length >= 4) continue;
+        
+        const availableSlots = 4 - lobby.players.length;
+        const playersToAdd = remainingPlayers.slice(0, availableSlots);
+        
+        if (playersToAdd.length > 0) {
+          this.logger.debug(`Adding ${playersToAdd.length} players to existing lobby ${lobbyId}`);
+          this.addPlayersToWaitingLobby(lobbyId, playersToAdd);
+          
+          // Retirer les joueurs ajoutés de la liste restante
+          remainingPlayers = remainingPlayers.filter(p => 
+            !playersToAdd.some(added => added.user.id === p.user.id)
+          );
+        }
       }
+      
+      // Ensuite, créer de nouveaux lobbies avec les joueurs restants
+      while (remainingPlayers.length >= 2) {
+        const playersForNewLobby = remainingPlayers.slice(0, 4);
+        this.logger.debug(`Creating new lobby for ${playersForNewLobby.length} players`);
+        this.createWaitingLobby(gametype, playersForNewLobby);
+        
+        remainingPlayers = remainingPlayers.filter(p => 
+          !playersForNewLobby.some(np => np.user.id === p.user.id)
+        );
+      }
+      
+      this.logger.debug(`${remainingPlayers.length} players remaining in queue for ${gametype}`);
     }
 
     this.logger.debug('=== handleGameQueue END ===');
@@ -512,7 +538,7 @@ export class GameSessionService {
       timeRemaining: 60,
     };
 
-    this.waitingLobbies[gametype] = lobby;
+    this.waitingLobbies.set(roomId, lobby);
 
     // Envoyer l'événement lobby-created aux joueurs
     const playersInfo = players.map(p => ({
@@ -526,21 +552,22 @@ export class GameSessionService {
       gametype,
       players: playersInfo,
       timeRemaining: 60,
-      maxPlayers: 8,
+      maxPlayers: 4,
     });
 
     this.logger.debug(`Emitted lobby-created to ${players.length} players`);
 
     // Démarrer le countdown de 60 secondes
-    this.startLobbyCountdown(gametype);
+    this.startLobbyCountdown(roomId);
   }
 
-  private addPlayersToWaitingLobby(gametype: GametypeEnum, newPlayers: UserQueue[]) {
-    const lobby = this.waitingLobbies[gametype];
+  private addPlayersToWaitingLobby(lobbyId: string, newPlayers: UserQueue[]) {
+    const lobby = this.waitingLobbies.get(lobbyId);
     if (!lobby) return;
 
     const lobbyRoom = `lobby-${lobby.id}`;
-    const maxPlayers = 8;
+    const maxPlayers = 4;
+    const gametype = lobby.gametype; // Utiliser le gametype du lobby
 
     for (const player of newPlayers) {
       if (lobby.players.length >= maxPlayers) break;
@@ -571,15 +598,15 @@ export class GameSessionService {
 
     this.server.to(lobbyRoom).emit('lobby-updated', {
       roomId: lobby.id,
-      gametype,
+      gametype: lobby.gametype,
       players: playersInfo,
       timeRemaining: lobby.timeRemaining,
-      maxPlayers: 8,
+      maxPlayers: 4,
     });
   }
 
-  private startLobbyCountdown(gametype: GametypeEnum) {
-    const lobby = this.waitingLobbies[gametype];
+  private startLobbyCountdown(lobbyId: string) {
+    const lobby = this.waitingLobbies.get(lobbyId);
     if (!lobby) return;
 
     const lobbyRoom = `lobby-${lobby.id}`;
@@ -596,13 +623,13 @@ export class GameSessionService {
       });
 
       if (lobby.timeRemaining <= 0) {
-        this.launchTournamentFromLobby(gametype);
+        this.launchTournamentFromLobby(lobbyId);
       }
     }, 1000);
   }
 
-  private launchTournamentFromLobby(gametype: GametypeEnum) {
-    const lobby = this.waitingLobbies[gametype];
+  private launchTournamentFromLobby(lobbyId: string) {
+    const lobby = this.waitingLobbies.get(lobbyId);
     if (!lobby) return;
 
     // Arrêter le timer
@@ -625,11 +652,11 @@ export class GameSessionService {
       // Remettre les joueurs dans la queue
       for (const player of lobby.players) {
         player.client.leave(lobbyRoom);
-        player.client.join(this.getQueueRoom(gametype));
+        player.client.join(this.getQueueRoom(lobby.gametype));
         this.userQueue.push(player);
       }
       
-      delete this.waitingLobbies[gametype];
+      this.waitingLobbies.delete(lobbyId);
       return;
     }
 
@@ -645,7 +672,7 @@ export class GameSessionService {
       // Créer la session de jeu
       const activeGameSession: ActiveGameSession<any> = {
         id: roomId,
-        gametype,
+        gametype: lobby.gametype,
         status: IngameStatus.LOBBY,
         players: players,
         data: null as any,
@@ -682,7 +709,7 @@ export class GameSessionService {
       // Envoyer les joueurs vers la page de configuration
       const matchConfigData = {
         roomId,
-        gametype,
+        gametype: lobby.gametype,
         player1: { id: players[0].user.id, nickname: players[0].user.nickname },
         player2: { id: players[1].user.id, nickname: players[1].user.nickname },
       };
@@ -694,7 +721,7 @@ export class GameSessionService {
       }
 
       // Supprimer le lobby d'attente
-      delete this.waitingLobbies[gametype];
+      this.waitingLobbies.delete(lobbyId);
       return;
     }
 
@@ -714,10 +741,10 @@ export class GameSessionService {
     });
 
     // Créer le tournoi
-    const tournament = this.createTournament(gametype, lobby.players, lobby.id);
+    const tournament = this.createTournament(lobby.gametype, lobby.players, lobby.id);
     
     // Supprimer le lobby d'attente
-    delete this.waitingLobbies[gametype];
+    this.waitingLobbies.delete(lobbyId);
 
     // Démarrer le premier match du tournoi après un délai plus long
     // pour laisser le temps au frontend de naviguer ET enregistrer les listeners
@@ -816,51 +843,6 @@ export class GameSessionService {
         winner: null,
         status: 'pending',
         round: 1,
-        matchIndex: 0,
-      });
-    } else if (playerCount >= 5 && playerCount <= 8) {
-      // Tournoi 8 joueurs - 4 quarts + 2 demi-finales + 1 finale
-      // Quarts de finale
-      for (let i = 0; i < 4; i++) {
-        const p1 = players[i * 2] || null;
-        const p2 = players[i * 2 + 1] || null;
-        matches.push({
-          id: uuidv4(),
-          player1: p1,
-          player2: p2,
-          winner: p2 ? null : p1, // Si pas d'adversaire, victoire par forfait
-          status: p2 ? 'pending' : 'completed',
-          round: 0,
-          matchIndex: i,
-        });
-      }
-      // Demi-finales
-      matches.push({
-        id: uuidv4(),
-        player1: null,
-        player2: null,
-        winner: null,
-        status: 'pending',
-        round: 1,
-        matchIndex: 0,
-      });
-      matches.push({
-        id: uuidv4(),
-        player1: null,
-        player2: null,
-        winner: null,
-        status: 'pending',
-        round: 1,
-        matchIndex: 1,
-      });
-      // Finale
-      matches.push({
-        id: uuidv4(),
-        player1: null,
-        player2: null,
-        winner: null,
-        status: 'pending',
-        round: 2,
         matchIndex: 0,
       });
     }
@@ -1533,38 +1515,54 @@ export class GameSessionService {
 
   // Permettre à un joueur de quitter le lobby
   async removePlayerFromLobby(client: Socket, gametype: GametypeEnum) {
-    const lobby = this.waitingLobbies[gametype];
-    if (!lobby) return;
-
     const user = client.handshake.auth.user as User;
-    const playerIdx = lobby.players.findIndex(p => p.user.id === user.id);
+    
+    // Chercher le lobby du joueur
+    let playerLobby: { id: string; gametype: GametypeEnum; players: UserQueue[]; createdAt: Date; timer: NodeJS.Timeout | null; timeRemaining: number; } | null = null;
+    let playerLobbyId: string | null = null;
+    
+    for (const [lobbyId, lobby] of this.waitingLobbies.entries()) {
+      if (lobby.gametype === gametype && lobby.players.some(p => p.user.id === user.id)) {
+        playerLobby = lobby;
+        playerLobbyId = lobbyId;
+        break;
+      }
+    }
+    
+    if (!playerLobby || !playerLobbyId) return;
+
+    const playerIdx = playerLobby.players.findIndex(p => p.user.id === user.id);
     
     if (playerIdx === -1) return;
 
-    lobby.players.splice(playerIdx, 1);
-    client.leave(`lobby-${lobby.id}`);
+    playerLobby.players.splice(playerIdx, 1);
+    client.leave(`lobby-${playerLobby.id}`);
+    
+    // Retirer aussi de la queue si le joueur y est encore
+    const queueIdx = this.userQueue.findIndex(uq => uq.user.id === user.id);
+    if (queueIdx !== -1) {
+      this.userQueue.splice(queueIdx, 1);
+    }
 
-    this.logger.debug(`Player ${user.email} left lobby ${lobby.id}. Remaining: ${lobby.players.length}`);
+    this.logger.debug(`Player ${user.email} left lobby ${playerLobby.id}. Remaining: ${playerLobby.players.length}`);
 
     // Notifier les autres joueurs
-    const playersInfo = lobby.players.map(p => ({
+    const playersInfo = playerLobby.players.map(p => ({
       id: p.user.id,
       email: p.user.email,
       nickname: p.user.nickname,
     }));
 
-    this.server.to(`lobby-${lobby.id}`).emit('lobby-updated', {
-      roomId: lobby.id,
+    this.server.to(`lobby-${playerLobby.id}`).emit('lobby-updated', {
+      roomId: playerLobby.id,
       gametype,
       players: playersInfo,
-      timeRemaining: lobby.timeRemaining,
-      maxPlayers: 8,
+      timeRemaining: playerLobby.timeRemaining,
+      maxPlayers: 4,
     });
-
-    // Si plus personne, supprimer le lobby
-    if (lobby.players.length === 0) {
-      if (lobby.timer) clearInterval(lobby.timer);
-      delete this.waitingLobbies[gametype];
+    if (playerLobby.players.length === 0) {
+      if (playerLobby.timer) clearInterval(playerLobby.timer);
+      this.waitingLobbies.delete(playerLobbyId);
     }
   }
 

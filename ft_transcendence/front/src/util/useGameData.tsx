@@ -62,7 +62,7 @@ type GameDataContextValue = {
   gameDataWinner: (winner: string) => void;
   gameDataShoot: (data: GamedataShootDto) => void;
   gameDataPong: (data: GamedataPongDto) => void;
-  assureConnection: () => void;
+  assureConnection: () => Promise<void>;
 };
 
 export enum OrientationEnum {
@@ -565,13 +565,26 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const assureConnection = () => {
+  const assureConnection = async (): Promise<void> => {
     if (typeof window === 'undefined') return;
     if (!clientRef.current) return;
 
     if (!isConnected) {
       try {
         clientRef.current.connect();
+        
+        // Attendre que la connexion soit établie
+        return new Promise((resolve) => {
+          const checkConnection = () => {
+            if (clientRef.current?.connected) {
+              resolve();
+            } else {
+              // Réessayer après un court délai
+              setTimeout(checkConnection, 100);
+            }
+          };
+          checkConnection();
+        });
       } catch (error) {
         console.warn('Failed to assure connection:', error);
       }
