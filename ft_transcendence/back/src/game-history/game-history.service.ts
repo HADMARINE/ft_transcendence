@@ -70,7 +70,7 @@ export class GameHistoryService {
       wins: number;
       losses: number;
       totalGames: number;
-      victoryRate: number; // percentage
+      victoryRate: number; 
     };
     pong: {
       wins: number;
@@ -85,7 +85,6 @@ export class GameHistoryService {
       victoryRate: number;
     };
   }> {
-    // I know that this is not the most efficient way to do it, but it is the simplest
     const gameHistories = (await this.gameHistoryRepository.find()).filter(
       (value) => value.players.includes(userid),
     );

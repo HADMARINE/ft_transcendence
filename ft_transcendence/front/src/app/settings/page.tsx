@@ -20,7 +20,6 @@ const ProfilePage = () => {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarTimestamp, setAvatarTimestamp] = useState(Date.now());
   
-  // États pour les données utilisateur
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [email, setEmail] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -30,16 +29,13 @@ const ProfilePage = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
-  // États pour les amis
   const [searchQuery, setSearchQuery] = useState('');
   const [friendRequests, setFriendRequests] = useState<ApiFriendRequest[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   
-  // États pour les statistiques
   const [stats, setStats] = useState<UserStats | null>(null);
   
-  // Charger l'utilisateur connecté
   useEffect(() => {
     loadCurrentUser();
   }, []);
@@ -55,7 +51,6 @@ const ProfilePage = () => {
         setUserProfile(profile);
         setEmail(profile.email);
         setUsername(profile.username);
-        // Set status to online when user opens settings
         await updateUserStatus('online');
       } else {
         console.log('No profile found, redirecting to login');
@@ -69,7 +64,6 @@ const ProfilePage = () => {
     }
   }
   
-  // Charger les données des amis et stats
   useEffect(() => {
     if (userId) {
       loadFriends();
@@ -78,25 +72,22 @@ const ProfilePage = () => {
     }
   }, [userId]);
   
-  // Auto-refresh friends list when on friends tab
   useEffect(() => {
     if (activeTab === 'friends' && userId) {
       const interval = setInterval(() => {
         loadFriends();
-      }, 5000); // Refresh every 5 seconds
+      }, 5000);
       
       return () => clearInterval(interval);
     }
   }, [activeTab, userId]);
 
-  // Listen for user status updates via websocket
   useEffect(() => {
     if (!gameData?.client || !userId) {
       return;
     }
 
     const handleStatusUpdate = (data: { userId: string; status: 'offline' | 'online' | 'in_game' }) => {
-      // Reload friends when any user status changes
       if (activeTab === 'friends') {
         loadFriends();
       }
@@ -211,7 +202,6 @@ const ProfilePage = () => {
           setUserProfile(result.user);
         }
         alert('Nom d\'utilisateur mis à jour avec succès!');
-        // Reload current user to sync everything
         await loadCurrentUser();
       } else {
         alert(`Erreur: ${result.message || 'Échec de la mise à jour'}`);
@@ -227,7 +217,6 @@ const ProfilePage = () => {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      // Set status to offline before logging out
       await updateUserStatus('offline');
       await logoutApi();
       router.push('/login');
@@ -247,13 +236,11 @@ const ProfilePage = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Vérifier le type de fichier
     if (!file.type.startsWith('image/')) {
       alert('Veuillez sélectionner une image');
       return;
     }
 
-    // Vérifier la taille (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       alert('L\'image ne doit pas dépasser 5MB');
       return;
@@ -264,11 +251,8 @@ const ProfilePage = () => {
       const result = await uploadAvatar(file);
       console.log('Upload result:', result);
       if (result.success && result.avatarUrl) {
-        // Mettre à jour le timestamp pour forcer le rechargement de l'image
         setAvatarTimestamp(Date.now());
-        // Recharger le profil pour obtenir la nouvelle URL d'avatar
         await loadCurrentUser();
-        // Forcer le rafraîchissement de l'image en ajoutant un timestamp
         setUserProfile(prev => prev ? { ...prev, avatar: result.avatarUrl } : null);
         console.log('Avatar URL:', result.avatarUrl);
         alert('Photo de profil mise à jour avec succès!');
@@ -281,7 +265,6 @@ const ProfilePage = () => {
       alert('Une erreur est survenue lors de l\'upload');
     } finally {
       setIsUploadingAvatar(false);
-      // Reset le input pour permettre de sélectionner la même image à nouveau
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -313,7 +296,6 @@ const ProfilePage = () => {
         const targetUser = searchResults.find(u => u.id === targetId);
         alert(`Demande d'ami envoyée à ${targetUser?.username}`);
         setSearchResults(searchResults.filter(u => u.id !== targetId));
-        // Recharger la liste d'amis
         loadFriends();
       } else {
         alert(`Erreur: ${result.message || 'Échec de l\'envoi'}`);
@@ -543,7 +525,7 @@ const ProfilePage = () => {
           </button>
         </div>
 
-        {/* Onglet Profil */}
+        {}
         {activeTab === 'profile' && userProfile && (
           <div style={cardStyle}>
             <h2 style={{ fontSize: '1.8rem', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -587,7 +569,7 @@ const ProfilePage = () => {
                     borderRadius: '50%', 
                     backgroundColor: userProfile.avatar ? 'transparent' : '#4cc9f0',
                     backgroundImage: userProfile.avatar 
-                      ? `url(${process.env.NEXT_PUBLIC_API_URI || 'http://localhost:3000'}${userProfile.avatar}?t=${avatarTimestamp})` 
+                      ? `url(${process.env.NEXT_PUBLIC_API_URI || 'http:
                       : 'linear-gradient(45deg, #4cc9f0, #4361ee)',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
@@ -639,7 +621,7 @@ const ProfilePage = () => {
           </div>
         )}
 
-        {/* Onglet Username */}
+        {}
         {activeTab === 'username' && (
           <div style={cardStyle}>
             <h2 style={{ fontSize: '1.8rem', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -679,7 +661,7 @@ const ProfilePage = () => {
           </div>
         )}
 
-        {/* Onglet Email */}
+        {}
         {activeTab === 'email' && (
           <div style={cardStyle}>
             <h2 style={{ fontSize: '1.8rem', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -961,7 +943,7 @@ const ProfilePage = () => {
           </div>
         )}
 
-        {/* Onglet Stats */}
+        {}
         {activeTab === 'stats' && stats && (
           <div style={cardStyle}>
             <h2 style={{ fontSize: '1.8rem', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -974,7 +956,7 @@ const ProfilePage = () => {
               gap: '25px',
               marginBottom: '30px'
             }}>
-              {/* Performances globales */}
+              {}
               <div style={{ 
                 background: 'rgba(22, 33, 62, 0.5)', 
                 borderRadius: '15px', 
@@ -1065,7 +1047,7 @@ const ProfilePage = () => {
               </div>
             </div>
 
-            {/* Historique des parties */}
+            {}
             <div>
               <h3 style={{ fontSize: '1.4rem', marginBottom: '20px', color: '#4cc9f0' }}>
                 Historique des parties

@@ -13,6 +13,4 @@ export class DataSortDto {
   order: DataSortOrder;
 }
 
-/**
- * Data sorting query dto
- */
+

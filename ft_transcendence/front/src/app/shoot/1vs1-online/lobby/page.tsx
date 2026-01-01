@@ -260,8 +260,7 @@ export default function LobbyPage() {
     };
 
     const onMatchConfig = (data: { roomId: string; gametype: string; player1: PlayerInfo; player2: PlayerInfo }) => {
-      console.log("🎮 Match config received in lobby:", data);
-      // Pour un duel 1v1, rediriger vers la page de configuration
+      console.log(" Match config received in lobby:", data);
       router.push(`/shoot/1vs1online/Config?roomId=${data.roomId}&player1=${encodeURIComponent(data.player1.nickname)}&player2=${encodeURIComponent(data.player2.nickname)}`);
     };
 
@@ -440,7 +439,7 @@ export default function LobbyPage() {
         </button>
 
         <div style={styles.infoBox}>
-          💡 Le tournoi démarrera automatiquement dans {timeRemaining} secondes, ou dès que 8 joueurs sont présents.
+           Le tournoi démarrera automatiquement dans {timeRemaining} secondes, ou dès que 8 joueurs sont présents.
         </div>
       </div>
     </div>

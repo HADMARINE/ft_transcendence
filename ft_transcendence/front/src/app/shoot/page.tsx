@@ -24,7 +24,6 @@ const ModeSelectionPage: React.FC = () => {
     };
   }, []);
 
-  // Écouter lobby-created pour rediriger vers le lobby
   useEffect(() => {
     if (!gameData.client) return;
 
@@ -53,7 +52,6 @@ const ModeSelectionPage: React.FC = () => {
     };
   }, [gameData.client, router, showQueueModal]);
 
-  // Écouter lobby-update pour le compteur de joueurs dans la queue
   useEffect(() => {
     if (!gameData.client || !showQueueModal) return;
 
@@ -146,10 +144,10 @@ const ModeSelectionPage: React.FC = () => {
           e.currentTarget.style.transform = 'translateY(0)';
         }}
       >
-        🏠 Accueil
+         Accueil
       </button>
       
-      {/* Queue Modal */}
+      {}
       {showQueueModal && (
         <div style={styles.queueOverlay as React.CSSProperties}>
           <div style={styles.queuePopup as React.CSSProperties}>
@@ -226,7 +224,7 @@ const ModeSelectionPage: React.FC = () => {
         }
         
         .spinner-wheel::after {
-          content: '🎮';
+          content: '';
           position: absolute;
           top: 50%;
           left: 50%;
@@ -261,7 +259,7 @@ const ModeSelectionPage: React.FC = () => {
         }
       `}</style>
 
-      {/* Notification standard */}
+      {}
       <div style={styles.notificationContainer}>
         <div 
           style={{

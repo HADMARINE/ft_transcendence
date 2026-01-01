@@ -10,7 +10,7 @@ import { GameHistoryModule } from 'src/game-history/game-history.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
-    // AuthModule,
+    
     forwardRef(() => AuthModule),
     forwardRef(() => GameHistoryModule),
     UtilsModule,

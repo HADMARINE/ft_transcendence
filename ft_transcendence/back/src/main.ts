@@ -31,7 +31,7 @@ async function bootstrap() {
   });
 
   if (process.env.NODE_ENV !== 'production') {
-    // Debug
+    
   }
 
   const allowedOrigins = [
@@ -56,14 +56,6 @@ async function bootstrap() {
   });
   await app.register(helmet);
   
-  // Enregistrer multipart pour les uploads de fichiers
-  // Décommentez après avoir installé: yarn add @fastify/multipart
-  // const fastifyMultipart = require('@fastify/multipart');
-  // await app.register(fastifyMultipart, {
-  //   limits: {
-  //     fileSize: 5 * 1024 * 1024, // 5MB max
-  //   },
-  // });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -89,7 +81,6 @@ async function bootstrap() {
       },
       'Authorization',
     )
-    // .addTag('')
     .build();
 
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig, {

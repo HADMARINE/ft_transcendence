@@ -7,15 +7,15 @@ export default function Presence() {
   useEffect(() => {
     (async () => {
       try {
-        // If user has a valid session cookie, mark as online.
+        
         await updateUserStatus("online");
       } catch {
-        // Ignore when not authenticated.
+        
       }
     })();
 
     const onBeforeUnload = () => {
-      // Best-effort; async not guaranteed during unload.
+      
       void updateUserStatus("offline");
     };
 

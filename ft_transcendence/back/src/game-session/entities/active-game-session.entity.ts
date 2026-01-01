@@ -8,13 +8,7 @@ export class ActiveGameSession<TData> {
   gametype: GametypeEnum;
   status: IngameStatus;
   players: UserQueue[];
-  /**
-   * Tournament History
-   *
-   * Depth 0 data is a round : for round number, get length of array
-   * Depth 1 data is a match
-   * Depth 2 data is two id of players
-   */
+  
   tournamentHistory: [string, string][][];
 
   classNumber: number;
@@ -34,7 +28,7 @@ export class ActiveGameSession<TData> {
   currentClass: number;
   mapVoteData: string[];
   
-  // Tournament tracking
+  
   tournamentId?: string;
   matchId?: string;
 }

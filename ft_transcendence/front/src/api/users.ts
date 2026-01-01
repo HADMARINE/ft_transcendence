@@ -106,7 +106,7 @@ export async function uploadAvatar(
   file: File
 ): Promise<{ success: boolean; avatarUrl?: string; message?: string }> {
   try {
-    // Convertir le fichier en base64
+    
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);

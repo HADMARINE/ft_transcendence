@@ -12,7 +12,7 @@ export class LocalAuthGuard extends AuthGuard('local') {
     context: ExecutionContext,
     status?: any,
   ): TUser {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    
     if (info?.message === 'Missing credentials') {
       throw new ParametersInvalidException();
     }

@@ -167,7 +167,6 @@ export default function TournamentPage() {
   const [isSpectator, setIsSpectator] = useState(false);
 
   useEffect(() => {
-    // Récupérer l'ID de l'utilisateur connecté
     const fetchUser = async () => {
       const user = await getCurrentUser();
       if (user?.id) {
@@ -181,10 +180,9 @@ export default function TournamentPage() {
     if (!gameData.client) return;
 
     const handleTournamentBracket = (data: TournamentState) => {
-      console.log("📋 Received tournament-bracket:", data);
+      console.log(" Received tournament-bracket:", data);
       setTournamentState(data);
 
-      // Déterminer si l'utilisateur est spectateur
       if (data.currentMatch && currentUserId) {
         const isPlayer = 
           data.currentMatch.player1?.id === currentUserId ||
@@ -194,33 +192,29 @@ export default function TournamentPage() {
     };
 
     const handleMatchStarting = (data: any) => {
-      console.log("🎮 Match starting:", data);
+      console.log(" Match starting:", data);
       
-      // Vérifier si l'utilisateur est un des joueurs
       if (currentUserId) {
         const isPlayer = 
           data.match.player1?.id === currentUserId ||
           data.match.player2?.id === currentUserId;
         
         if (isPlayer) {
-          // Le joueur va recevoir l'événement match-config pour naviguer
           setIsSpectator(false);
         } else {
-          // L'utilisateur est spectateur, rediriger vers la page spectateur
           setIsSpectator(true);
-          console.log("👁️ Redirecting to spectator page for match:", data.match.id);
+          console.log("️ Redirecting to spectator page for match:", data.match.id);
           router.push(`/shoot/1vs1-online/spectator?roomId=${data.match.id}&tournamentId=${data.tournamentId}&matchId=${data.match.id}`);
         }
       }
     };
 
     const handleMatchEnded = (data: any) => {
-      console.log("✅ Match ended:", data);
+      console.log(" Match ended:", data);
     };
 
     const handleTournamentEnded = (data: any) => {
-      console.log("🏆 Tournament ended:", data);
-      // Mettre à jour l'état pour afficher le gagnant
+      console.log(" Tournament ended:", data);
       if (tournamentState) {
         setTournamentState({
           ...tournamentState,
@@ -229,40 +223,35 @@ export default function TournamentPage() {
         });
       }
 
-      // Rediriger vers la page d'accueil après 5 secondes
       setTimeout(() => {
-        console.log("🏠 Redirecting to home page...");
+        console.log(" Redirecting to home page...");
         router.push('/shoot');
       }, 5000);
     };
 
     const handleMatchConfig = (data: any) => {
-      console.log("🎮 Match config received:", data);
+      console.log(" Match config received:", data);
       
-      // Vérifier si l'utilisateur est un des joueurs de CE match
       if (currentUserId) {
         const isPlayer = 
           data.player1?.id === currentUserId ||
           data.player2?.id === currentUserId;
         
         if (isPlayer) {
-          // C'est MON match, je dois aller configurer
-          console.log("✅ Je suis un joueur de ce match, navigation vers Config");
+          console.log(" Je suis un joueur de ce match, navigation vers Config");
           router.push(`/shoot/1vs1online/Config?roomId=${data.roomId}&tournamentId=${data.tournamentId}&matchId=${data.matchId}`);
         } else {
-          // Ce n'est pas mon match, je reste spectateur
-          console.log("👁️ Ce n'est pas mon match, je reste spectateur");
+          console.log("️ Ce n'est pas mon match, je reste spectateur");
           setIsSpectator(true);
         }
       }
     };
 
     const handleSpectatorMode = (data: any) => {
-      console.log("👁️ Received spectator-mode:", data);
-      // Je suis explicitement désigné comme spectateur, rediriger vers la page spectateur
+      console.log("️ Received spectator-mode:", data);
       setIsSpectator(true);
       if (data.roomId) {
-        console.log("👁️ Redirecting to spectator page via spectator-mode event");
+        console.log("️ Redirecting to spectator page via spectator-mode event");
         router.push(`/shoot/1vs1-online/spectator?roomId=${data.roomId}&tournamentId=${data.tournamentId || ''}&matchId=${data.matchId || ''}`);
       }
     };
@@ -285,10 +274,9 @@ export default function TournamentPage() {
   }, [gameData.client, router, currentUserId, tournamentState]);
 
   useEffect(() => {
-    // Écouter l'événement personnalisé tournament-starting
     const handleTournamentStarting = (event: Event) => {
       const customEvent = event as CustomEvent;
-      console.log("🎪 Tournament starting (custom event):", customEvent.detail);
+      console.log(" Tournament starting (custom event):", customEvent.detail);
     };
 
     window.addEventListener("tournament-starting", handleTournamentStarting as EventListener);
@@ -344,7 +332,7 @@ export default function TournamentPage() {
         </div>
         {isSpectator && (
           <div style={styles.spectatorBadge as React.CSSProperties}>
-            👁️ Mode Spectateur
+            ️ Mode Spectateur
           </div>
         )}
       </div>
@@ -352,7 +340,7 @@ export default function TournamentPage() {
       {tournamentState.currentMatch && tournamentState.status === 'in_progress' && (
         <div style={styles.currentMatchBanner as React.CSSProperties}>
           <div style={styles.currentMatchTitle as React.CSSProperties}>
-            ⚔️ Match en cours
+            ️ Match en cours
           </div>
           <div style={styles.playerName as React.CSSProperties}>
             {tournamentState.currentMatch.player1?.nickname || "En attente"}
@@ -373,7 +361,7 @@ export default function TournamentPage() {
       {tournamentState.status === 'completed' && tournamentState.winner && (
         <div style={styles.winnerAnnouncement as React.CSSProperties}>
           <div style={styles.winnerTitle as React.CSSProperties}>
-            🏆 Vainqueur du Tournoi 🏆
+             Vainqueur du Tournoi 
           </div>
           <div style={styles.winnerName as React.CSSProperties}>
             {tournamentState.winner.nickname}

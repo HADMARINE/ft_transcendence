@@ -9,7 +9,7 @@ export default function ShootLayout({ children }: { children: React.ReactNode })
       try {
         await updateUserStatus("in_game", "shoot");
       } catch {
-        // Ignore if not authenticated.
+        
       }
     })();
 

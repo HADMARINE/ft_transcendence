@@ -177,12 +177,10 @@ export default function MatchConfigPage() {
 
     console.log('match-config: Setting up socket listeners');
 
-    // Écouter les mises à jour de config des autres joueurs
     const handleConfigUpdate = (data: any) => {
       console.log('match-config: Received config-update', data);
       console.log('Data roomId:', data.roomId, 'Current roomId:', roomId);
       
-      // Le backend envoie déjà uniquement aux autres joueurs
       if (data.roomId === roomId) {
         console.log('Updating opponent ready status to:', data.ready);
         if (data.ready !== undefined) {
@@ -193,16 +191,13 @@ export default function MatchConfigPage() {
       }
     };
 
-    // Écouter quand le jeu doit démarrer (les 2 joueurs sont prêts)
     const handleIngameComm = (data: any) => {
       console.log('match-config: Received ingame-comm', data);
       if (!hasNavigated.current) {
         hasNavigated.current = true;
-        // Naviguer vers le jeu (utiliser roomId au lieu de id)
         const gameRoomId = data.roomId || data.id;
-        console.log('🎮 Navigating to game with roomId:', gameRoomId);
+        console.log(' Navigating to game with roomId:', gameRoomId);
         
-        // Inclure tournamentId dans l'URL si c'est un match de tournoi
         const url = tournamentId 
           ? `/pong/1vs1-online/game?roomId=${gameRoomId}&tournamentId=${tournamentId}`
           : `/pong/1vs1-online/game?roomId=${gameRoomId}`;
@@ -211,7 +206,6 @@ export default function MatchConfigPage() {
       }
     };
 
-    // Écouter les données du match
     const handleMatchConfig = (data: any) => {
       console.log('match-config: Received match-config', data);
       setMatchData(data);
@@ -235,7 +229,6 @@ export default function MatchConfigPage() {
     const newReadyState = !isReady;
     setIsReady(newReadyState);
 
-    // Envoyer la config au serveur
     client.emit('player-config', {
       roomId,
       tournamentId,
@@ -252,7 +245,6 @@ export default function MatchConfigPage() {
     const client = gameData.client;
     if (!client) return;
 
-    // Envoyer la mise à jour de couleur
     client.emit('player-config', {
       roomId,
       tournamentId,
@@ -269,7 +261,6 @@ export default function MatchConfigPage() {
     const client = gameData.client;
     if (!client) return;
 
-    // Envoyer la mise à jour de vitesse
     client.emit('player-config', {
       roomId,
       tournamentId,
@@ -280,7 +271,6 @@ export default function MatchConfigPage() {
     });
   };
 
-  // Extraire les informations des joueurs depuis matchData ou searchParams
   const player1Name = matchData?.player1?.nickname || searchParams.get('player1') || 'Joueur 1';
   const player2Name = matchData?.player2?.nickname || searchParams.get('player2') || 'Joueur 2';
   
@@ -288,7 +278,6 @@ export default function MatchConfigPage() {
   const myName = amIPlayer1 ? player1Name : player2Name;
   const opponentName = amIPlayer1 ? player2Name : player1Name;
   
-  // Statuts prêt pour chaque joueur
   const player1Ready = amIPlayer1 ? isReady : opponentReady;
   const player2Ready = amIPlayer1 ? opponentReady : isReady;
 
@@ -299,7 +288,7 @@ export default function MatchConfigPage() {
         {tournamentId ? 'Match de Tournoi' : 'Duel 1vs1'}
       </p>
 
-      {/* Match Info */}
+      {}
       <div style={styles.matchInfo}>
         <div style={{
           ...styles.playerCard,
@@ -313,7 +302,7 @@ export default function MatchConfigPage() {
             backgroundColor: player1Ready ? '#2ecc71' : '#e74c3c',
             color: 'white',
           }}>
-            {player1Ready ? '✓ Prêt' : 'En attente...'}
+            {player1Ready ? ' Prêt' : 'En attente...'}
           </span>
         </div>
 
@@ -331,12 +320,12 @@ export default function MatchConfigPage() {
             backgroundColor: player2Ready ? '#2ecc71' : '#e74c3c',
             color: 'white',
           }}>
-            {player2Ready ? '✓ Prêt' : 'En attente...'}
+            {player2Ready ? ' Prêt' : 'En attente...'}
           </span>
         </div>
       </div>
 
-      {/* Config Form */}
+      {}
       <div style={styles.configContainer}>
         <h2 style={styles.configTitle}>Vos Paramètres</h2>
 
@@ -380,7 +369,7 @@ export default function MatchConfigPage() {
             ...(isReady ? styles.readyButtonReady : {}),
           }}
         >
-          {isReady ? '✓ PRÊT !' : 'JE SUIS PRÊT'}
+          {isReady ? ' PRÊT !' : 'JE SUIS PRÊT'}
         </button>
       </div>
 

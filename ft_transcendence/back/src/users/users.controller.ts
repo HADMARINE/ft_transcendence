@@ -44,10 +44,10 @@ export class UsersController {
       const fs = await import('fs/promises');
       const filePath = join(process.cwd(), 'public', 'avatars', filename);
       
-      // Vérifier que le fichier existe
+      
       await fs.access(filePath);
       
-      // Déterminer le type MIME
+      
       const ext = filename.split('.').pop()?.toLowerCase();
       const mimeTypes: Record<string, string> = {
         'png': 'image/png',
@@ -57,10 +57,10 @@ export class UsersController {
       };
       const mimeType = mimeTypes[ext || ''] || 'application/octet-stream';
       
-      // Lire le fichier
+      
       const fileBuffer = await fs.readFile(filePath);
       
-      // Définir les en-têtes CORS
+      
       res.header('Access-Control-Allow-Origin', '*');
       res.header('Cross-Origin-Resource-Policy', 'cross-origin');
       res.header('Content-Type', mimeType);
@@ -90,7 +90,7 @@ export class UsersController {
     return this.usersService.findAll(findAllUsersDto);
   }
 
-  // GET /users/me must be BEFORE /users/:id to avoid matching "me" as an id
+  
   @Get('me')
   @Roles(AuthorityEnum.NORMAL)
   getMe(@Req() request: RequestWithUser) {
@@ -115,7 +115,7 @@ export class UsersController {
     return this.usersService.findOnePublic(id);
   }
 
-  // Friends APIs expected by front
+  
   @Get(':id/friends')
   @Roles(AuthorityEnum.NORMAL)
   getFriends(@Param('id') id: string) {
@@ -223,7 +223,7 @@ export class UsersController {
         throw new BadRequestException('No image data provided');
       }
 
-      // Extraire les données base64
+      
       const matches = body.image.match(/^data:image\/([a-zA-Z]*);base64,([^\"]*)/);
       if (!matches || matches.length !== 3) {
         throw new BadRequestException('Invalid image format');
@@ -232,25 +232,20 @@ export class UsersController {
       const imageType = matches[1];
       const base64Data = matches[2];
 
-      // Vérifier le type d'image
       const allowedTypes = ['jpeg', 'jpg', 'png', 'gif'];
       if (!allowedTypes.includes(imageType.toLowerCase())) {
         throw new BadRequestException('Only JPEG, PNG, and GIF images are allowed');
       }
 
-      // Générer un nom de fichier unique
       const uniqueFilename = `avatar-${randomBytes(16).toString('hex')}-${Date.now()}.${imageType}`;
       const uploadPath = join(process.cwd(), 'public', 'avatars');
       const filePath = join(uploadPath, uniqueFilename);
 
-      // Créer le répertoire s'il n'existe pas
       const fs = await import('fs/promises');
       await fs.mkdir(uploadPath, { recursive: true });
 
-      // Sauvegarder le fichier
       const buffer = Buffer.from(base64Data, 'base64');
       
-      // Vérifier la taille (5MB max)
       if (buffer.length > 5 * 1024 * 1024) {
         throw new BadRequestException('Image size must not exceed 5MB');
       }

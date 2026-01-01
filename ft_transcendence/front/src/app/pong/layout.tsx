@@ -9,7 +9,7 @@ export default function PongLayout({ children }: { children: React.ReactNode }) 
       try {
         await updateUserStatus("in_game", "pong");
       } catch {
-        // Ignore if not authenticated.
+        
       }
     })();
 

@@ -74,7 +74,7 @@ export class UsersService {
 
   async findOnePublic(id: string): Promise<any> {
     const user = await this.findOne(id);
-    // Map nickname to username for frontend compatibility
+    
     return {
       id: user.id,
       username: user.nickname,
@@ -125,7 +125,7 @@ export class UsersService {
       throw new DataNotFoundException({ name: 'user' });
     }
 
-    // Verify current password
+    
     const isValid = this.authService.verifyPassword(
       currentPassword,
       user.pubkey,
@@ -138,7 +138,7 @@ export class UsersService {
       return { success: false, message: 'Invalid current password' };
     }
 
-    // Check if email already exists
+    
     const existingUser = await this.usersRepository.findOne({ where: { email: newEmail } });
     if (existingUser && existingUser.id !== id) {
       return { success: false, message: 'Email already in use' };
@@ -168,7 +168,7 @@ export class UsersService {
       throw new DataNotFoundException({ name: 'user' });
     }
 
-    // Verify current password
+    
     const isValid = this.authService.verifyPassword(
       currentPassword,
       user.pubkey,
@@ -192,7 +192,7 @@ export class UsersService {
     }
   }
 
-  // --- Friends management using user.friends array ---
+  
   async getFriends(userId: string) {
     const user = await this.usersRepository.findOneBy({ id: userId });
     if (!user || !user.friends || user.friends.length === 0) {
@@ -210,7 +210,7 @@ export class UsersService {
   }
 
   async getFriendRequests(userId: string) {
-    // TODO: implement with separate friend_requests table
+    
     return [];
   }
 
@@ -229,7 +229,7 @@ export class UsersService {
       return { success: false, message: 'Already friends' };
     }
 
-    // Simplified: directly add to friends list (skip request flow)
+    
     user.friends.push(targetId);
     target.friends.push(userId);
 
@@ -238,12 +238,12 @@ export class UsersService {
   }
 
   async acceptFriendRequest(userId: string, requestId: string) {
-    // TODO: implement with separate friend_requests table
+    
     return { success: true };
   }
 
   async declineFriendRequest(userId: string, requestId: string) {
-    // TODO: implement with separate friend_requests table
+    
     return { success: true };
   }
 
@@ -255,9 +255,9 @@ export class UsersService {
       return { success: false, message: 'User not found' };
     }
 
-    // Remove friendId from user's friends list
+    
     user.friends = user.friends.filter((id) => id !== friendId);
-    // Remove userId from friend's friends list
+    
     friend.friends = friend.friends.filter((id) => id !== userId);
 
     await this.usersRepository.save([user, friend]);
@@ -293,19 +293,19 @@ export class UsersService {
       throw new DataNotFoundException({ name: 'user' });
     }
 
-    // Récupérer tous les matchs du joueur
+    
     const allGames = await this.gameHistoryService.findAll({});
     const userGames = allGames.filter((game: any) => 
       game.players.includes(userId)
     );
 
-    // Calculer les statistiques globales
+    
     const totalGames = userGames.length;
     const wins = userGames.filter((game: any) => game.winner === userId).length;
     const losses = totalGames - wins;
     const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
 
-    // Grouper par type de jeu
+    
     const gamesByType: { [key: string]: { played: number; won: number; lost: number } } = {};
     
     userGames.forEach((game: any) => {
@@ -328,7 +328,7 @@ export class UsersService {
       lost: gamesByType[gameType].lost,
     }));
 
-    // Créer l'historique des matchs (limité aux 20 derniers)
+    
     const history = await Promise.all(
       userGames
         .sort((a: any, b: any) => b.date - a.date)
@@ -342,7 +342,7 @@ export class UsersService {
               const opponent = await this.findOne(opponentId);
               opponentName = opponent?.nickname || 'Inconnu';
             } catch (e) {
-              // Si l'adversaire n'existe plus, garder "Inconnu"
+              
             }
           }
 

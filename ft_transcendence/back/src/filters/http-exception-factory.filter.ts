@@ -66,7 +66,4 @@ export class HttpExceptionFactoryFilter implements ExceptionFilter {
   }
 }
 
-/**
- * Http exception factory error filter
- * return status, timestamp, path, code (error code), message (error message)
- */
+

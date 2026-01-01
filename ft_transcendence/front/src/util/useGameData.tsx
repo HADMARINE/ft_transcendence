@@ -9,7 +9,6 @@ import React, {
 } from "react";
 import { io, Socket } from "socket.io-client";
 
-// Event name used to keep websocket auth token in sync across tabs.
 export const TOKEN_SYNC_EVENT = "ft-token-changed";
 
 export enum RegisterQueueStatus {
@@ -91,7 +90,6 @@ const GameDataContext: React.Context<GameDataContextValue | undefined> =
 if (!(globalThis as any)[GLOBAL_KEY])
   (globalThis as any)[GLOBAL_KEY] = GameDataContext;
 
-// Hook pour récupérer le token stocké côté client (localStorage)
 const useClientToken = () => {
   const [token, setToken] = useState<string | undefined>(undefined);
 
@@ -104,7 +102,7 @@ const useClientToken = () => {
     };
     const syncToken = () => setToken(readToken());
 
-    // Initial sync
+    
     syncToken();
 
     const handleStorage = (event: StorageEvent) => {
@@ -146,7 +144,6 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [socketInitialized, setSocketInitialized] = useState(false);
   const [pendingQueueGametype, setPendingQueueGametype] = useState<GametypeEnum | null>(null);
 
-  // Utiliser le hook personnalisé pour le token
   const token = useClientToken();
 
   useEffect(() => {
@@ -155,7 +152,6 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [ingameData, status]);
 
-  // Socket initialization - Connect once on mount, even without token (cookie auth fallback)
   useEffect(() => {
     if (typeof window === 'undefined' || socketInitialized) return;
 
@@ -178,12 +174,11 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("Connected to server");
       setIsConnected(true);
       
-      // Si l'utilisateur était en train de rejoindre une queue avant la déconnexion, réessayer
       if (pendingQueueGametype) {
         console.log("Reconnected, re-registering queue for:", pendingQueueGametype);
         setTimeout(() => {
           client.emit("register-queue", { gametype: pendingQueueGametype });
-        }, 500); // Petit délai pour s'assurer que la connexion est stable
+        }, 500);
       }
     });
 
@@ -204,11 +199,8 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("Register Queue Status:", data);
       setRegisterQueueStatus(data);
       
-      // Si l'inscription a réussi, sauvegarder l'état
       if (data === RegisterQueueStatus.REGISTERED || data === RegisterQueueStatus.ALREADY_REGISTERED) {
-        // Ne rien faire de spécial, le pendingQueueGametype reste
       } else if (data === RegisterQueueStatus.UNREGISTERED || data === RegisterQueueStatus.NOT_REGISTERED) {
-        // Nettoyer l'état si l'utilisateur n'est plus en queue
         setPendingQueueGametype(null);
       }
     });
@@ -256,12 +248,10 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("User status updated:", data);
     });
 
-    // Événements du nouveau système de lobby dynamique
     client.on("lobby-created", (data: { roomId: string; gametype: string; players: any[]; timeRemaining: number }) => {
       console.log("=== LOBBY-CREATED EVENT IN PROVIDER ===", data);
       sessionStorage.setItem('lobbyData', JSON.stringify(data));
       window.dispatchEvent(new CustomEvent('lobby-created', { detail: data }));
-      // Nettoyer l'état de queue car l'utilisateur a rejoint un lobby
       setPendingQueueGametype(null);
     });
 
@@ -281,48 +271,48 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     client.on("tournament-bracket", (data: any) => {
-      console.log("📋 === TOURNAMENT-BRACKET EVENT IN PROVIDER ===", data);
+      console.log(" === TOURNAMENT-BRACKET EVENT IN PROVIDER ===", data);
       window.dispatchEvent(new CustomEvent('tournament-bracket', { detail: data }));
     });
 
     client.on("tournament-match-starting", (data: any) => {
-      console.log("🎮 === TOURNAMENT-MATCH-STARTING EVENT IN PROVIDER ===", data);
+      console.log(" === TOURNAMENT-MATCH-STARTING EVENT IN PROVIDER ===", data);
       window.dispatchEvent(new CustomEvent('tournament-match-starting', { detail: data }));
     });
 
     client.on("tournament-match-ended", (data: any) => {
-      console.log("✅ === TOURNAMENT-MATCH-ENDED EVENT IN PROVIDER ===", data);
+      console.log(" === TOURNAMENT-MATCH-ENDED EVENT IN PROVIDER ===", data);
       window.dispatchEvent(new CustomEvent('tournament-match-ended', { detail: data }));
     });
 
     client.on("tournament-ended", (data: any) => {
-      console.log("🏆 === TOURNAMENT-ENDED EVENT IN PROVIDER ===", data);
+      console.log(" === TOURNAMENT-ENDED EVENT IN PROVIDER ===", data);
       window.dispatchEvent(new CustomEvent('tournament-ended', { detail: data }));
     });
 
     client.on("tournament-cancelled", (data: any) => {
-      console.log("🚫 === TOURNAMENT-CANCELLED EVENT IN PROVIDER ===", data);
+      console.log(" === TOURNAMENT-CANCELLED EVENT IN PROVIDER ===", data);
       window.dispatchEvent(new CustomEvent('tournament-cancelled', { detail: data }));
     });
 
     client.on("match-config", (data: any) => {
-      console.log("🎮 === MATCH-CONFIG EVENT IN PROVIDER === socket received event", data);
-      console.log("🎮 Dispatching custom event 'match-config'");
+      console.log(" === MATCH-CONFIG EVENT IN PROVIDER === socket received event", data);
+      console.log(" Dispatching custom event 'match-config'");
       window.dispatchEvent(new CustomEvent('match-config', { detail: data }));
     });
 
     client.on("match-config-spectator", (data: any) => {
-      console.log("👁️ === MATCH-CONFIG-SPECTATOR EVENT IN PROVIDER ===", data);
+      console.log("️ === MATCH-CONFIG-SPECTATOR EVENT IN PROVIDER ===", data);
       window.dispatchEvent(new CustomEvent('match-config-spectator', { detail: data }));
     });
 
     client.on("spectator-mode", (data: any) => {
-      console.log("👁️ === SPECTATOR-MODE EVENT IN PROVIDER ===", data);
+      console.log("️ === SPECTATOR-MODE EVENT IN PROVIDER ===", data);
       window.dispatchEvent(new CustomEvent('spectator-mode', { detail: data }));
     });
 
     client.on("spectator-game", (data: any) => {
-      console.log("👁️ === SPECTATOR-GAME EVENT IN PROVIDER ===", data);
+      console.log("️ === SPECTATOR-GAME EVENT IN PROVIDER ===", data);
       window.dispatchEvent(new CustomEvent('spectator-game', { detail: data }));
     });
 
@@ -342,7 +332,6 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, [socketInitialized]);
 
-  // Update auth token if it changes
   useEffect(() => {
     if (token && clientRef.current) {
       clientRef.current.auth = { Authorization: token };
@@ -361,7 +350,6 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const registerQueue = (gametype: GametypeEnum) => {
     const client = clientRef.current;
     
-    // Sauvegarder le gametype pour réessayer en cas de reconnexion
     setPendingQueueGametype(gametype);
     
     const emitRegister = (socket: Socket) => {
@@ -382,16 +370,13 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
         };
         client.on("connect", onConnect);
         
-        // S'assurer que le listener register-queue existe
         if (!client.hasListeners("register-queue")) {
           client.on("register-queue", (data: RegisterQueueStatus) => {
             console.log("Register Queue Status (reconnect):", data);
             setRegisterQueueStatus(data);
             
             if (data === RegisterQueueStatus.REGISTERED || data === RegisterQueueStatus.ALREADY_REGISTERED) {
-              // Inscription réussie
             } else if (data === RegisterQueueStatus.NOT_REGISTERED) {
-              // Échec, réessayer après un délai
               console.warn("Failed to register, retrying in 1s...");
               setTimeout(() => {
                 if (client.connected && pendingQueueGametype) {
@@ -409,7 +394,6 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
-    // Client doesn't exist yet, initialize it now
     console.log("No client available, initializing socket...");
     const token = localStorage.getItem("token") || undefined;
     const newClient = io(
@@ -423,7 +407,6 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     );
     clientRef.current = newClient;
 
-    // Ajouter les listeners essentiels sur le nouveau socket
     newClient.on("lobby-created", (data: { roomId: string; gametype: string; players: any[]; timeRemaining: number }) => {
       console.log("=== LOBBY-CREATED (new socket) ===", data);
       sessionStorage.setItem('lobbyData', JSON.stringify(data));
@@ -445,47 +428,47 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     newClient.on("tournament-bracket", (data: any) => {
-      console.log("📋 === TOURNAMENT-BRACKET (new socket) ===", data);
+      console.log(" === TOURNAMENT-BRACKET (new socket) ===", data);
       window.dispatchEvent(new CustomEvent('tournament-bracket', { detail: data }));
     });
 
     newClient.on("tournament-match-starting", (data: any) => {
-      console.log("🎮 === TOURNAMENT-MATCH-STARTING (new socket) ===", data);
+      console.log(" === TOURNAMENT-MATCH-STARTING (new socket) ===", data);
       window.dispatchEvent(new CustomEvent('tournament-match-starting', { detail: data }));
     });
 
     newClient.on("tournament-match-ended", (data: any) => {
-      console.log("✅ === TOURNAMENT-MATCH-ENDED (new socket) ===", data);
+      console.log(" === TOURNAMENT-MATCH-ENDED (new socket) ===", data);
       window.dispatchEvent(new CustomEvent('tournament-match-ended', { detail: data }));
     });
 
     newClient.on("tournament-ended", (data: any) => {
-      console.log("🏆 === TOURNAMENT-ENDED (new socket) ===", data);
+      console.log(" === TOURNAMENT-ENDED (new socket) ===", data);
       window.dispatchEvent(new CustomEvent('tournament-ended', { detail: data }));
     });
 
     newClient.on("tournament-cancelled", (data: any) => {
-      console.log("🚫 === TOURNAMENT-CANCELLED (new socket) ===", data);
+      console.log(" === TOURNAMENT-CANCELLED (new socket) ===", data);
       window.dispatchEvent(new CustomEvent('tournament-cancelled', { detail: data }));
     });
 
     newClient.on("match-config", (data: any) => {
-      console.log("🎮 === MATCH-CONFIG (new socket) ===", data);
+      console.log(" === MATCH-CONFIG (new socket) ===", data);
       window.dispatchEvent(new CustomEvent('match-config', { detail: data }));
     });
 
     newClient.on("match-config-spectator", (data: any) => {
-      console.log("👁️ === MATCH-CONFIG-SPECTATOR (new socket) ===", data);
+      console.log("️ === MATCH-CONFIG-SPECTATOR (new socket) ===", data);
       window.dispatchEvent(new CustomEvent('match-config-spectator', { detail: data }));
     });
 
     newClient.on("spectator-mode", (data: any) => {
-      console.log("👁️ === SPECTATOR-MODE (new socket) ===", data);
+      console.log("️ === SPECTATOR-MODE (new socket) ===", data);
       window.dispatchEvent(new CustomEvent('spectator-mode', { detail: data }));
     });
 
     newClient.on("spectator-game", (data: any) => {
-      console.log("👁️ === SPECTATOR-GAME (new socket) ===", data);
+      console.log("️ === SPECTATOR-GAME (new socket) ===", data);
       window.dispatchEvent(new CustomEvent('spectator-game', { detail: data }));
     });
 
@@ -519,7 +502,6 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const unregisterQueue = () => {
-    // Nettoyer l'état de queue en attente
     setPendingQueueGametype(null);
     
     if (clientRef.current && clientRef.current.connected) {
@@ -573,13 +555,11 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         clientRef.current.connect();
         
-        // Attendre que la connexion soit établie
         return new Promise((resolve) => {
           const checkConnection = () => {
             if (clientRef.current?.connected) {
               resolve();
             } else {
-              // Réessayer après un court délai
               setTimeout(checkConnection, 100);
             }
           };

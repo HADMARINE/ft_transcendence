@@ -11,6 +11,6 @@ export class ParseJsonPipe implements PipeTransform {
         throw new ParametersInvalidException();
       }
     }
-    return value; // already an object
+    return value; 
   }
 }

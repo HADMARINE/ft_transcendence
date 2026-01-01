@@ -39,8 +39,8 @@ export class GameSessionService {
   ) {}
   readonly userQueue: UserQueue[] = [];
   readonly activeGameSessions: Record<string, ActiveGameSession<unknown>> = {};
-  readonly lobbies: Record<string, Lobby> = {}; // gameType -> Lobby
-  readonly activeTournaments: Record<string, Tournament> = {}; // tournamentId -> Tournament
+  readonly lobbies: Record<string, Lobby> = {}; 
+  readonly activeTournaments: Record<string, Tournament> = {}; 
   private readonly logger = new Logger(GameSessionService.name);
   private _server: Server | null = null;
 
@@ -94,7 +94,7 @@ export class GameSessionService {
 
       client.handshake.auth.user = user;
 
-      // Mark user as online when socket connects
+      
       await this.usersService.updateUserStatus(user.id, 'online');
 
       for (const activeGameSession of Object.values(this.activeGameSessions)) {
@@ -103,7 +103,7 @@ export class GameSessionService {
             .map((user) => user.user.id)
             .includes(user.id)
         ) {
-          // TODO : reestablish user session, send info to client
+          
           client.emit('game-session', this.omitSensitives(activeGameSession));
           await client.join(activeGameSession.id);
           return;
@@ -127,7 +127,7 @@ export class GameSessionService {
 
     this.logger.debug(`User disconnected : ${user?.id} - ${user?.email}`);
 
-    // Remove the user from the legacy queue if present
+    
     const queueIndex = this.userQueue.findIndex(
       (userQueue) => userQueue.user?.id === user?.id,
     );
@@ -136,7 +136,7 @@ export class GameSessionService {
       const gametype = this.userQueue[queueIndex].gametype;
       this.userQueue.splice(queueIndex, 1);
       
-      // Broadcast updated queue to remaining players
+      
       const queueRoom = this.getQueueRoom(gametype);
       const separated = this.getSeperatedUserQueue();
       const waitingPlayers = separated[gametype].map((p) => ({
@@ -157,7 +157,6 @@ export class GameSessionService {
       );
     }
 
-    // Remove the user from any waiting lobby (nouveau système dynamique)
     for (const [lobbyId, lobby] of this.waitingLobbies.entries()) {
       const playerIdx = lobby.players.findIndex((p) => p.user.id === user?.id);
       if (playerIdx !== -1) {
@@ -167,12 +166,10 @@ export class GameSessionService {
         this.logger.debug(`Player ${user?.email} disconnected from waiting lobby ${lobby.id}. Remaining: ${lobby.players.length}`);
 
         if (lobby.players.length === 0) {
-          // Plus personne dans le lobby, supprimer
           this.logger.debug(`Waiting lobby ${lobby.id} is now empty, deleting...`);
           if (lobby.timer) clearInterval(lobby.timer);
           this.waitingLobbies.delete(lobbyId);
         } else {
-          // Notifier les autres joueurs
           const playersInfo = lobby.players.map((p) => ({
             id: p.user.id,
             email: p.user.email,
@@ -199,7 +196,7 @@ export class GameSessionService {
       }
     }
 
-    // Remove the user from any old lobby system
+    
     for (const [key, lobby] of Object.entries(this.lobbies)) {
       const playerIdx = lobby.players.findIndex((p) => p.user.id === user?.id);
       if (playerIdx !== -1) {
@@ -226,14 +223,12 @@ export class GameSessionService {
       }
     }
 
-    // Vérifier si l'utilisateur fait partie d'un tournoi actif
     for (const [tournamentId, tournament] of Object.entries(this.activeTournaments)) {
       const isPlayerInTournament = tournament.players.some(p => p.user.id === user?.id);
       
       if (isPlayerInTournament) {
-        this.logger.warn(`⚠️ Player ${user?.nickname} disconnected from active tournament ${tournamentId}. Cancelling tournament...`);
+        this.logger.warn(`️ Player ${user?.nickname} disconnected from active tournament ${tournamentId}. Cancelling tournament...`);
         
-        // Annuler le tournoi
         this.cancelTournament(tournamentId, `Le joueur ${user?.nickname} a quitté le tournoi`);
         break;
       }
@@ -267,7 +262,7 @@ export class GameSessionService {
     );
     this.logger.debug(`Current userQueue length before: ${this.userQueue.length}`);
 
-    // Check if user already registered in the existing queue system
+    
     const alreadyInQueue = this.userQueue.some(
       (uq) => uq.user.id === user.id && uq.gametype === gametype,
     );
@@ -277,7 +272,7 @@ export class GameSessionService {
       return;
     }
 
-    // Add user to the existing userQueue
+    
     const entry: UserQueue = {
       user,
       client,
@@ -285,13 +280,13 @@ export class GameSessionService {
       entryTimestamp: new Date(),
     };
     this.userQueue.push(entry);
-    this.logger.debug(`✅ Added ${user.email} to userQueue. Total now: ${this.userQueue.length}`);
+    this.logger.debug(`Added ${user.email} to userQueue. Total now: ${this.userQueue.length}`);
 
-    // Join the shared queue room per game type for UI updates
+    
     await client.join(queueRoom);
-    this.logger.debug(`✅ ${user.email} joined room: ${queueRoom}`);
+    this.logger.debug(`${user.email} joined room: ${queueRoom}`);
 
-    // Broadcast current waiting users for this gametype
+    
     const separated = this.getSeperatedUserQueue();
     const waitingPlayers = separated[gametype].map((p) => ({
       id: p.user.id,
@@ -310,12 +305,11 @@ export class GameSessionService {
       players: waitingPlayers,
     });
 
-    this.logger.debug(`✅ Successfully sent lobby-update to room ${queueRoom}`);
+    this.logger.debug(`Successfully sent lobby-update to room ${queueRoom}`);
 
     client.emit('register-queue', RegisterQueueStatus.REGISTERED);
-    this.logger.debug(`✅ Sent REGISTERED status to ${user.email}`);
+    this.logger.debug(`Sent REGISTERED status to ${user.email}`);
 
-    // Mark player as in_game for presence tracking
     const gameId = gametype.toLowerCase();
     await this.usersService.updateUserStatus(user.id, 'in_game', gameId);
   }
@@ -324,7 +318,6 @@ export class GameSessionService {
     const playerCount = lobby.players.length;
     const queueRoom = this.getQueueRoom(lobby.gametype);
 
-    // After 30s, include everyone currently waiting in the lobby in one game
     if (playerCount >= 2) {
       await Promise.all(
         lobby.players.map(async (p) => {
@@ -338,7 +331,6 @@ export class GameSessionService {
       );
       delete this.lobbies[`${lobby.gametype}`];
     } else {
-      // Not enough players yet; reschedule to try again in 30s
       lobby.waitTimer = setTimeout(() => {
         this.processLobby(lobby);
       }, 30000);
@@ -347,7 +339,6 @@ export class GameSessionService {
 
   async unregisterQueue(client: Socket) {
     const user = client.handshake.auth.user as User;
-    // Try to remove from the existing queue first
     const queueIdx = this.userQueue.findIndex(
       (uq) => uq.user.id === user.id,
     );
@@ -361,7 +352,6 @@ export class GameSessionService {
         `Removed ${user.email} from userQueue. Total: ${this.userQueue.length}`,
       );
 
-      // Broadcast updated waiting list
       const separated = this.getSeperatedUserQueue();
       const waitingPlayers = separated[gametype].map((p) => ({
         id: p.user.id,
@@ -381,7 +371,6 @@ export class GameSessionService {
       return;
     }
 
-    // Fallback: remove from any temporary lobby
     for (const [key, lobby] of Object.entries(this.lobbies)) {
       const playerIndex = lobby.players.findIndex(
         (p) => p.user.id === user.id,
@@ -447,7 +436,6 @@ export class GameSessionService {
     return queue;
   }
 
-  // Lobbies d'attente actifs (plusieurs lobbies possibles par gametype)
   readonly waitingLobbies: Map<string, {
     id: string;
     gametype: GametypeEnum;
@@ -466,7 +454,6 @@ export class GameSessionService {
       `Current queue status - PONG : ${queue[GametypeEnum.PONG].length}, SHOOT : ${queue[GametypeEnum.SHOOT].length}`,
     );
 
-    // Pour chaque type de jeu, vérifier si on peut créer ou rejoindre un lobby
     for (const gametype of [GametypeEnum.PONG, GametypeEnum.SHOOT]) {
       const playersInQueue = queue[gametype];
       
@@ -474,10 +461,8 @@ export class GameSessionService {
 
       this.logger.debug(`Processing ${playersInQueue.length} players in queue for ${gametype}`);
 
-      // Copier la liste des joueurs à traiter
       let remainingPlayers = [...playersInQueue];
 
-      // D'abord, remplir les lobbies existants non pleins
       for (const [lobbyId, lobby] of this.waitingLobbies.entries()) {
         if (lobby.gametype !== gametype || lobby.players.length >= 4) continue;
         
@@ -488,14 +473,12 @@ export class GameSessionService {
           this.logger.debug(`Adding ${playersToAdd.length} players to existing lobby ${lobbyId}`);
           this.addPlayersToWaitingLobby(lobbyId, playersToAdd);
           
-          // Retirer les joueurs ajoutés de la liste restante
           remainingPlayers = remainingPlayers.filter(p => 
             !playersToAdd.some(added => added.user.id === p.user.id)
           );
         }
       }
       
-      // Ensuite, créer de nouveaux lobbies avec les joueurs restants
       while (remainingPlayers.length >= 2) {
         const playersForNewLobby = remainingPlayers.slice(0, 4);
         this.logger.debug(`Creating new lobby for ${playersForNewLobby.length} players`);
@@ -518,13 +501,11 @@ export class GameSessionService {
     
     this.logger.debug(`Creating waiting lobby ${roomId} for ${gametype} with ${players.length} players`);
 
-    // Retirer les joueurs de la queue
     for (const player of players) {
       const idx = this.userQueue.findIndex(uq => uq.user.id === player.user.id);
       if (idx !== -1) {
         this.userQueue.splice(idx, 1);
       }
-      // Quitter la room de queue et rejoindre le lobby
       player.client.leave(this.getQueueRoom(gametype));
       player.client.join(lobbyRoom);
     }
@@ -540,7 +521,6 @@ export class GameSessionService {
 
     this.waitingLobbies.set(roomId, lobby);
 
-    // Envoyer l'événement lobby-created aux joueurs
     const playersInfo = players.map(p => ({
       id: p.user.id,
       email: p.user.email,
@@ -557,7 +537,6 @@ export class GameSessionService {
 
     this.logger.debug(`Emitted lobby-created to ${players.length} players`);
 
-    // Démarrer le countdown de 60 secondes
     this.startLobbyCountdown(roomId);
   }
 
@@ -567,21 +546,18 @@ export class GameSessionService {
 
     const lobbyRoom = `lobby-${lobby.id}`;
     const maxPlayers = 4;
-    const gametype = lobby.gametype; // Utiliser le gametype du lobby
+    const gametype = lobby.gametype;
 
     for (const player of newPlayers) {
       if (lobby.players.length >= maxPlayers) break;
       
-      // Vérifier si le joueur n'est pas déjà dans le lobby
       if (lobby.players.some(p => p.user.id === player.user.id)) continue;
 
-      // Retirer de la queue
       const idx = this.userQueue.findIndex(uq => uq.user.id === player.user.id);
       if (idx !== -1) {
         this.userQueue.splice(idx, 1);
       }
 
-      // Ajouter au lobby
       player.client.leave(this.getQueueRoom(gametype));
       player.client.join(lobbyRoom);
       lobby.players.push(player);
@@ -589,7 +565,6 @@ export class GameSessionService {
       this.logger.debug(`Added player ${player.user.email} to lobby ${lobby.id}. Total: ${lobby.players.length}`);
     }
 
-    // Notifier tous les joueurs du lobby
     const playersInfo = lobby.players.map(p => ({
       id: p.user.id,
       email: p.user.email,
@@ -611,11 +586,9 @@ export class GameSessionService {
 
     const lobbyRoom = `lobby-${lobby.id}`;
 
-    // Timer qui décrémente chaque seconde
     lobby.timer = setInterval(() => {
       lobby.timeRemaining--;
 
-      // Envoyer le temps restant à tous les joueurs
       this.server.to(lobbyRoom).emit('lobby-countdown', {
         roomId: lobby.id,
         timeRemaining: lobby.timeRemaining,
@@ -632,7 +605,6 @@ export class GameSessionService {
     const lobby = this.waitingLobbies.get(lobbyId);
     if (!lobby) return;
 
-    // Arrêter le timer
     if (lobby.timer) {
       clearInterval(lobby.timer);
       lobby.timer = null;
@@ -644,12 +616,10 @@ export class GameSessionService {
     this.logger.debug(`Launching tournament from lobby ${lobby.id} with ${playerCount} players`);
 
     if (playerCount < 2) {
-      // Pas assez de joueurs, annuler
       this.server.to(lobbyRoom).emit('lobby-cancelled', {
         reason: 'NOT_ENOUGH_PLAYERS',
       });
       
-      // Remettre les joueurs dans la queue
       for (const player of lobby.players) {
         player.client.leave(lobbyRoom);
         player.client.join(this.getQueueRoom(lobby.gametype));
@@ -662,14 +632,12 @@ export class GameSessionService {
 
     const playerCountForFormat = lobby.players.length;
 
-    // Si c'est un duel (2 joueurs), créer un match 1v1 simple avec page de config
     if (playerCountForFormat === 2) {
       this.logger.debug(`Creating 1v1 match for lobby ${lobby.id}`);
       
       const roomId = lobby.id;
       const players = lobby.players;
 
-      // Créer la session de jeu
       const activeGameSession: ActiveGameSession<any> = {
         id: roomId,
         gametype: lobby.gametype,
@@ -686,7 +654,6 @@ export class GameSessionService {
         mapVoteData: [],
       };
 
-      // Initialiser lobbyData avec des couleurs par défaut
       activeGameSession.lobbyData[players[0].user.id] = {
         ready: false,
         color: '#4cc9f0',
@@ -700,13 +667,11 @@ export class GameSessionService {
 
       this.activeGameSessions[roomId] = activeGameSession;
 
-      // Faire rejoindre les joueurs à la room du match
       for (const player of players) {
         player.client.leave(lobbyRoom);
         player.client.join(roomId);
       }
 
-      // Envoyer les joueurs vers la page de configuration
       const matchConfigData = {
         roomId,
         gametype: lobby.gametype,
@@ -714,22 +679,18 @@ export class GameSessionService {
         player2: { id: players[1].user.id, nickname: players[1].user.nickname },
       };
 
-      this.logger.log(`🎮 Sending match-config for 1v1 lobby match to ${players[0].user.nickname} and ${players[1].user.nickname}`);
+      this.logger.log(`Sending match-config for 1v1 lobby match to ${players[0].user.nickname} and ${players[1].user.nickname}`);
       
       for (const player of players) {
         player.client.emit('match-config', matchConfigData);
       }
 
-      // Supprimer le lobby d'attente
       this.waitingLobbies.delete(lobbyId);
       return;
     }
 
-    // Sinon, créer un tournoi
     const format = playerCountForFormat <= 4 ? 'TOURNAMENT_4' : 'TOURNAMENT_8';
 
-    // Émettre d'abord l'événement tournament-starting au lobby
-    // pour que le frontend puisse naviguer vers la page tournoi
     this.server.to(lobbyRoom).emit('tournament-starting', {
       format,
       tournamentId: lobby.id,
@@ -737,42 +698,35 @@ export class GameSessionService {
         id: p.user.id,
         nickname: p.user.nickname,
       })),
-      brackets: [], // Sera rempli après
+      brackets: [],
     });
 
-    // Créer le tournoi
     const tournament = this.createTournament(lobby.gametype, lobby.players, lobby.id);
     
-    // Supprimer le lobby d'attente
     this.waitingLobbies.delete(lobbyId);
 
-    // Démarrer le premier match du tournoi après un délai plus long
-    // pour laisser le temps au frontend de naviguer ET enregistrer les listeners
     setTimeout(() => {
-      this.logger.log(`📋 Starting first tournament match for tournament ${tournament.id}...`);
+      this.logger.log(` Starting first tournament match for tournament ${tournament.id}...`);
       this.startNextTournamentMatch(tournament.id);
-    }, 5000); // Augmenté à 5000ms pour plus de stabilité
+    }, 5000);
   }
 
   private createTournament(gametype: GametypeEnum, lobbyPlayers: UserQueue[], lobbyId: string): Tournament {
     const tournamentId = lobbyId;
     const tournamentRoom = `tournament-${tournamentId}`;
 
-    // Convertir les joueurs du lobby en joueurs de tournoi
     const players: TournamentPlayer[] = lobbyPlayers.map(p => ({
       user: p.user,
       client: p.client,
       odisconnected: false,
     }));
 
-    // Faire rejoindre la room du tournoi à tous les joueurs
-    this.logger.error(`🎪 Creating tournament ${tournamentId}, joining players to room ${tournamentRoom}`);
+    this.logger.error(`Creating tournament ${tournamentId}, joining players to room ${tournamentRoom}`);
     for (const player of players) {
       player.client.join(tournamentRoom);
-      this.logger.error(`  ✅ ${player.user.nickname} (socket ${player.client.id}) joined room ${tournamentRoom}`);
+      this.logger.error(` ${player.user.nickname} (socket ${player.client.id}) joined room ${tournamentRoom}`);
     }
 
-    // Créer les matchs selon le nombre de joueurs
     const matches = this.createTournamentBracket(players);
 
     const tournament: Tournament = {
@@ -790,7 +744,6 @@ export class GameSessionService {
 
     this.activeTournaments[tournamentId] = tournament;
 
-    // Envoyer l'arbre du tournoi à tous les joueurs
     this.broadcastTournamentState(tournament);
 
     this.logger.debug(`Tournament ${tournamentId} created with ${players.length} players and ${matches.length} matches`);
@@ -803,7 +756,6 @@ export class GameSessionService {
     const playerCount = players.length;
 
     if (playerCount === 2) {
-      // Duel simple - 1 match
       matches.push({
         id: uuidv4(),
         player1: players[0],
@@ -814,8 +766,6 @@ export class GameSessionService {
         matchIndex: 0,
       });
     } else if (playerCount >= 3 && playerCount <= 4) {
-      // Tournoi 4 joueurs - 2 demi-finales + 1 finale
-      // Demi-finale 1: joueur 0 vs joueur 1
       matches.push({
         id: uuidv4(),
         player1: players[0],
@@ -825,20 +775,18 @@ export class GameSessionService {
         round: 0,
         matchIndex: 0,
       });
-      // Demi-finale 2: joueur 2 vs joueur 3 (ou bye si 3 joueurs)
       matches.push({
         id: uuidv4(),
         player1: players[2],
         player2: players[3] || null,
-        winner: players[3] ? null : players[2], // Si pas de 4ème joueur, le 3ème gagne par forfait
+        winner: players[3] ? null : players[2],
         status: players[3] ? 'pending' : 'completed',
         round: 0,
         matchIndex: 1,
       });
-      // Finale
       matches.push({
         id: uuidv4(),
-        player1: null, // Sera rempli après les demi-finales
+        player1: null,
         player2: null,
         winner: null,
         status: 'pending',
@@ -853,7 +801,6 @@ export class GameSessionService {
   private broadcastTournamentState(tournament: Tournament) {
     const tournamentRoom = `tournament-${tournament.id}`;
 
-    // Créer un objet propre sans références circulaires (Socket, etc.)
     const state = {
       tournamentId: tournament.id,
       gametype: tournament.gametype,
@@ -882,45 +829,41 @@ export class GameSessionService {
       winner: tournament.winner ? { id: tournament.winner.user.id, nickname: tournament.winner.user.nickname } : null,
     };
 
-    // Utiliser JSON.parse(JSON.stringify()) pour s'assurer qu'il n'y a AUCUNE référence circulaire
     const cleanState = JSON.parse(JSON.stringify(state));
     
     this.server.to(tournamentRoom).emit('tournament-bracket', cleanState);
   }
 
   private startNextTournamentMatch(tournamentId: string) {
-    this.logger.log(`🎪 === START NEXT TOURNAMENT MATCH === tournamentId: ${tournamentId}`);
+    this.logger.log(`== START NEXT TOURNAMENT MATCH === tournamentId: ${tournamentId}`);
     const tournament = this.activeTournaments[tournamentId];
     if (!tournament) {
-      this.logger.error(`🎪 ERROR: Tournament ${tournamentId} not found!`);
+      this.logger.error(` ERROR: Tournament ${tournamentId} not found!`);
       return;
     }
 
-    this.logger.log(`🎪 Tournament matches status:`);
+    this.logger.log(`Tournament matches status:`);
     tournament.matches.forEach(m => {
       this.logger.log(`  Match ${m.id}: ${m.status} - ${m.player1?.user.nickname || 'TBD'} vs ${m.player2?.user.nickname || 'TBD'} (round ${m.round}, index ${m.matchIndex})`);
     });
 
-    // Toujours remplir les matchs du round suivant avec les gagnants
     this.fillNextRoundMatches(tournament);
 
-    // Trouver le prochain match à jouer
     const nextMatch = tournament.matches.find(m => m.status === 'pending' && m.player1 && m.player2);
-    this.logger.log(`🎪 Found ${tournament.matches.length} total matches. Looking for pending match...`);
+    this.logger.log(`Found ${tournament.matches.length} total matches. Looking for pending match...`);
     if (nextMatch) {
-      this.logger.log(`🎪 Found pending match: ${nextMatch.id} - ${nextMatch.player1?.user.nickname} vs ${nextMatch.player2?.user.nickname}`);
+      this.logger.log(`Found pending match: ${nextMatch.id} - ${nextMatch.player1?.user.nickname} vs ${nextMatch.player2?.user.nickname}`);
     } else {
-      this.logger.log(`🎪 No pending match found with both players`);
+      this.logger.log(`No pending match found with both players`);
     }
 
     if (!nextMatch) {
-      // Tournoi terminé
       const allCompleted = tournament.matches.every(m => m.status === 'completed');
       if (allCompleted) {
-        this.logger.log(`🎪 All matches completed! Tournament is over!`);
+        this.logger.log(`All matches completed! Tournament is over!`);
         this.endTournament(tournament);
       } else {
-        this.logger.log(`🎪 Waiting for more matches to complete. Pending: ${tournament.matches.filter(m => m.status === 'pending').length}`);
+        this.logger.log(`Waiting for more matches to complete. Pending: ${tournament.matches.filter(m => m.status === 'pending').length}`);
       }
       return;
     }
@@ -929,21 +872,19 @@ export class GameSessionService {
   }
 
   private fillNextRoundMatches(tournament: Tournament) {
-    this.logger.log(`🎪 Filling next round matches...`);
-    // Remplir les matchs du round suivant avec les gagnants
+    this.logger.log(`Filling next round matches...`);
     const completedMatches = tournament.matches.filter(m => m.status === 'completed');
-    this.logger.log(`🎪 Found ${completedMatches.length} completed matches`);
+    this.logger.log(`Found ${completedMatches.length} completed matches`);
     
     for (const match of tournament.matches) {
       if (match.status !== 'pending') continue;
       if (match.player1 && match.player2) {
         this.logger.log(`  Match ${match.id} already has both players`);
-        continue; // Déjà rempli
+        continue;
       }
 
       this.logger.log(`  Trying to fill match ${match.id} (round ${match.round}, index ${match.matchIndex})`);
 
-      // Trouver les matchs précédents qui alimentent ce match
       const previousRound = match.round - 1;
       if (previousRound < 0) {
         this.logger.log(`    Previous round is ${previousRound}, skipping`);
@@ -954,9 +895,7 @@ export class GameSessionService {
       this.logger.log(`    Found ${feedingMatches.length} feeding matches from round ${previousRound}`);
       
       if (match.round === 1 && tournament.matches.length >= 3) {
-        // Demi-finales alimentées par les quarts (ou matchs du round 0)
         if (match.matchIndex === 0) {
-          // Demi 1: gagnants des matchs 0 et 1 du round 0
           const match0 = feedingMatches.find(m => m.matchIndex === 0);
           const match1 = feedingMatches.find(m => m.matchIndex === 1);
           this.logger.log(`    Semi 0: Looking for winners of matches 0 and 1`);
@@ -969,7 +908,6 @@ export class GameSessionService {
             this.logger.log(`      Set player2 = ${match1.winner.user.nickname}`);
           }
         } else if (match.matchIndex === 1) {
-          // Demi 2: gagnants des matchs 2 et 3 du round 0
           const match2 = feedingMatches.find(m => m.matchIndex === 2);
           const match3 = feedingMatches.find(m => m.matchIndex === 3);
           this.logger.log(`    Semi 1: Looking for winners of matches 2 and 3`);
@@ -983,7 +921,6 @@ export class GameSessionService {
           }
         }
       } else if (match.round === 1 && tournament.players.length <= 4) {
-        // Finale pour tournoi 4 joueurs (round 1 = finale)
         const match0 = feedingMatches.find(m => m.matchIndex === 0);
         const match1 = feedingMatches.find(m => m.matchIndex === 1);
         this.logger.log(`    Final (4-player): Looking for winners of semis 0 and 1`);
@@ -996,7 +933,6 @@ export class GameSessionService {
           this.logger.log(`      Set player2 = ${match1.winner.user.nickname}`);
         }
       } else if (match.round === 2) {
-        // Finale pour tournoi 8 joueurs
         const semi0 = feedingMatches.find(m => m.matchIndex === 0);
         const semi1 = feedingMatches.find(m => m.matchIndex === 1);
         this.logger.log(`    Final (8-player): Looking for winners of semis 0 and 1`);
@@ -1010,20 +946,19 @@ export class GameSessionService {
         }
       }
     }
-    this.logger.log(`🎪 Finished filling next round matches`);
+    this.logger.log(`Finished filling next round matches`);
   }
 
   private startMatch(tournament: Tournament, match: TournamentMatch) {
     const tournamentRoom = `tournament-${tournament.id}`;
     
-    this.logger.log(`🎪 === STARTING MATCH === tournamentId: ${tournament.id}, matchId: ${match.id}`);
-    this.logger.log(`🎪 Match players: ${match.player1?.user.nickname} (${match.player1?.user.id}) vs ${match.player2?.user.nickname} (${match.player2?.user.id})`);
+    this.logger.log(` === STARTING MATCH === tournamentId: ${tournament.id}, matchId: ${match.id}`);
+    this.logger.log(` Match players: ${match.player1?.user.nickname} (${match.player1?.user.id}) vs ${match.player2?.user.nickname} (${match.player2?.user.id})`);
     
     tournament.currentMatch = match;
     tournament.status = 'in_progress';
     match.status = 'in_progress';
 
-    // Les autres joueurs sont spectateurs
     tournament.spectators = tournament.players.filter(
       p => p.user.id !== match.player1?.user.id && p.user.id !== match.player2?.user.id
     );
@@ -1032,7 +967,6 @@ export class GameSessionService {
       `Starting match ${match.id}: ${match.player1?.user.nickname} vs ${match.player2?.user.nickname}`
     );
 
-    // Informer tout le monde du début du match
     this.server.to(tournamentRoom).emit('tournament-match-starting', {
       tournamentId: tournament.id,
       match: {
@@ -1045,18 +979,16 @@ export class GameSessionService {
       spectators: tournament.spectators.map(s => ({ id: s.user.id, nickname: s.user.nickname })),
     });
 
-    // Créer la session de jeu pour les 2 joueurs
     if (match.player1 && match.player2) {
       const playersForGame: UserQueue[] = [
         { user: match.player1.user, client: match.player1.client, gametype: tournament.gametype, entryTimestamp: new Date() },
         { user: match.player2.user, client: match.player2.client, gametype: tournament.gametype, entryTimestamp: new Date() },
       ];
       
-      this.logger.log(`🎪 Calling handleTournamentGame for match ${match.id}`);
-      // Lancer le jeu avec un callback pour quand le match est terminé
+      this.logger.log(`Calling handleTournamentGame for match ${match.id}`);
       this.handleTournamentGame(tournament.id, match.id, playersForGame, tournament.spectators);
     } else {
-      this.logger.error(`🎪 ERROR: Match players not properly set! player1: ${match.player1}, player2: ${match.player2}`);
+      this.logger.error(`ERROR: Match players not properly set! player1: ${match.player1}, player2: ${match.player2}`);
     }
 
     this.broadcastTournamentState(tournament);
@@ -1067,26 +999,23 @@ export class GameSessionService {
     const room = this.server.of('/').in(roomId);
     const gametype = players[0].gametype;
 
-    // Joindre les joueurs à la room
     for (const player of players) {
       await player.client.join(roomId);
-      this.logger.debug(`✅ Player ${player.user.nickname} joined room ${roomId} (socket: ${player.client.id})`);
+      this.logger.debug(`Player ${player.user.nickname} joined room ${roomId} (socket: ${player.client.id})`);
     }
 
-    // Joindre les spectateurs à la room (ils recevront spectator-mode après)
     for (const spectator of spectators) {
       await spectator.client.join(roomId);
-      this.logger.debug(`👁️ Spectator ${spectator.user.nickname} joined room ${roomId}`);
+      this.logger.debug(`Spectator ${spectator.user.nickname} joined room ${roomId}`);
     }
 
-    // Créer la session de jeu en mode LOBBY (attente de configuration)
     const activeGameSession: ActiveGameSession<PongData> = {
       id: roomId,
       gametype,
       tournamentId,
       matchId,
       players: players,
-      status: IngameStatus.LOBBY, // En attente de configuration
+      status: IngameStatus.LOBBY,
       createdAt: Date.now(),
       tournamentHistory: [],
       room,
@@ -1125,24 +1054,22 @@ export class GameSessionService {
       mapVoteData: [],
     };
 
-    // Initialiser lobbyData avec des couleurs par défaut (pas encore prêts)
     activeGameSession.lobbyData[players[0].user.id] = {
       ready: false,
-      color: '#4cc9f0', // Bleu par défaut pour joueur 1
+      color: '#4cc9f0',
       map: 'classic',
     };
     activeGameSession.lobbyData[players[1].user.id] = {
       ready: false,
-      color: '#f72585', // Rose par défaut pour joueur 2
+      color: '#f72585',
       map: 'classic',
     };
 
     this.activeGameSessions[roomId] = activeGameSession;
 
     this.logger.debug(`Tournament game ${roomId} created for match ${matchId}, waiting for player config`);
-    this.logger.log(`🎮 SENDING match-config to player 1: ${players[0].user.nickname} and player 2: ${players[1].user.nickname}`);
+    this.logger.log(`SENDING match-config to player 1: ${players[0].user.nickname} and player 2: ${players[1].user.nickname}`);
 
-    // Envoyer les joueurs vers la page de configuration
     const matchConfigData = {
       roomId,
       tournamentId,
@@ -1152,15 +1079,13 @@ export class GameSessionService {
       player2: { id: players[1].user.id, nickname: players[1].user.nickname },
     };
 
-    this.logger.log(`🎮 EMITTING MATCH-CONFIG:\n  Tournament: ${tournamentId}\n  Match: ${matchId}\n  Room: ${roomId}\n  Player1: ${players[0].user.nickname} (${players[0].user.id})\n  Player2: ${players[1].user.nickname} (${players[1].user.id})\n`);
+    this.logger.log(`EMITTING MATCH-CONFIG:\n  Tournament: ${tournamentId}\n  Match: ${matchId}\n  Room: ${roomId}\n  Player1: ${players[0].user.nickname} (${players[0].user.id})\n  Player2: ${players[1].user.nickname} (${players[1].user.id})\n`);
 
-    // Émettre aux 2 joueurs UNIQUEMENT (pas à toute la room du tournoi)
     for (const player of players) {
       this.logger.log(`  → Sending match-config to ${player.user.nickname} (socket ${player.client.id})`);
       player.client.emit('match-config', matchConfigData);
     }
 
-    // Informer les spectateurs qu'ils doivent rester en mode spectateur
     for (const spectator of spectators) {
       this.logger.log(`  → Sending spectator-mode to ${spectator.user.nickname} (socket ${spectator.client.id})`);
       spectator.client.emit('spectator-mode', {
@@ -1173,7 +1098,6 @@ export class GameSessionService {
     }
   }
 
-  // Gérer la configuration des joueurs
   async handlePlayerConfig(client: Socket, data: { roomId: string; tournamentId?: string; matchId?: string; color: string; paddleSpeed?: number; mapId?: string; ready: boolean }) {
     const user = client.handshake.auth.user as User;
     const session = this.activeGameSessions[data.roomId];
@@ -1183,14 +1107,12 @@ export class GameSessionService {
       return;
     }
 
-    // Vérifier que le joueur fait partie de la session
     const isPlayer = session.players.some(p => p.user.id === user.id);
     if (!isPlayer) {
       this.logger.warn(`handlePlayerConfig: User ${user.id} is not part of session ${data.roomId}`);
       return;
     }
 
-    // Mettre à jour la configuration du joueur
     session.lobbyData[user.id] = {
       ready: data.ready,
       color: data.color,
@@ -1200,7 +1122,6 @@ export class GameSessionService {
 
     this.logger.debug(`Player ${user.nickname} config: ready=${data.ready}, color=${data.color}, speed=${data.paddleSpeed}`);
 
-    // Notifier UNIQUEMENT l'autre joueur de la mise à jour (pas le joueur qui envoie)
     this.logger.debug(`Broadcasting config-update to other players in room ${data.roomId}`);
     
     const configUpdateData = {
@@ -1213,7 +1134,6 @@ export class GameSessionService {
       mapId: data.mapId,
     };
     
-    // Envoyer à tous les joueurs de la session sauf l'émetteur
     for (const player of session.players) {
       if (player.user.id !== user.id) {
         this.logger.debug(`  → Sending config-update to ${player.user.nickname} (socket ${player.client.id})`);
@@ -1221,7 +1141,6 @@ export class GameSessionService {
       }
     }
     
-    // Envoyer aussi aux spectateurs s'il y en a
     if (session.tournamentId) {
       const tournament = this.activeTournaments[session.tournamentId];
       if (tournament?.spectators) {
@@ -1231,20 +1150,16 @@ export class GameSessionService {
       }
     }
 
-    // Vérifier si les deux joueurs sont prêts
     const allReady = session.players.every(p => session.lobbyData[p.user.id]?.ready === true);
     
     if (allReady) {
       this.logger.debug(`All players ready in session ${data.roomId}, starting game!`);
       
-      // Mettre à jour le status
       session.status = IngameStatus.IN_PROGRESS;
 
-      // Initialiser le jeu Pong si c'est un jeu Pong
       if (session.gametype === GametypeEnum.PONG) {
         this.initializePongGame(session as ActiveGameSession<PongData>);
         
-        // Pour Pong, envoyer seulement les infos nécessaires
         const pongData = session.data as PongData;
         const gameInfo = {
           roomId: session.id,
@@ -1269,7 +1184,6 @@ export class GameSessionService {
       } else if (session.gametype === GametypeEnum.SHOOT) {
         this.initializeShootGame(session);
         
-        // Pour Shoot, envoyer les infos nécessaires
         const shootData = session.data as any;
         const gameInfo = {
           roomId: session.id,
@@ -1293,17 +1207,14 @@ export class GameSessionService {
           player.client.emit('ingame-comm', gameInfo);
         }
       } else {
-        // Pour les autres jeux, envoyer les données normales
         for (const player of session.players) {
           player.client.emit('ingame-comm', this.omitSensitives(session));
         }
       }
 
-      // Envoyer aux spectateurs si c'est un match de tournoi
       if (session.tournamentId) {
         const tournament = this.activeTournaments[session.tournamentId];
         if (tournament) {
-          // Créer une version safe pour les spectateurs (sans références circulaires)
           const spectatorData = {
             roomId: session.id,
             tournamentId: session.tournamentId,
@@ -1341,7 +1252,6 @@ export class GameSessionService {
     }
   }
 
-  // Appelé quand un match de tournoi est terminé
   async handleTournamentMatchEnd(roomId: string, winnerId: string) {
     const session = this.activeGameSessions[roomId];
     if (!session || !session.tournamentId || !session.matchId) return;
@@ -1352,7 +1262,6 @@ export class GameSessionService {
     const match = tournament.matches.find(m => m.id === session.matchId);
     if (!match) return;
 
-    // Déterminer le gagnant
     const winner = match.player1?.user.id === winnerId ? match.player1 : match.player2;
     match.winner = winner;
     match.status = 'completed';
@@ -1360,7 +1269,6 @@ export class GameSessionService {
 
     this.logger.debug(`Match ${match.id} completed. Winner: ${winner?.user.nickname}`);
 
-    // Notifier tout le monde
     const tournamentRoom = `tournament-${tournament.id}`;
     this.server.to(tournamentRoom).emit('tournament-match-ended', {
       tournamentId: tournament.id,
@@ -1368,24 +1276,19 @@ export class GameSessionService {
       winner: winner ? { id: winner.user.id, nickname: winner.user.nickname } : null,
     });
 
-    // Broadcast l'état mis à jour
     this.broadcastTournamentState(tournament);
 
-    // Attendre 3 secondes avant de nettoyer (pour que les spectateurs voient le résultat)
     setTimeout(() => {
-      // Nettoyer la session de jeu
       delete this.activeGameSessions[roomId];
       
-      // Attendre 2 secondes de plus puis démarrer le prochain match
       setTimeout(() => {
-        this.logger.log(`🎪 Starting next tournament match for tournament ${tournament.id}`);
+        this.logger.log(`Starting next tournament match for tournament ${tournament.id}`);
         this.startNextTournamentMatch(tournament.id);
       }, 2000);
     }, 3000);
   }
 
   private endTournament(tournament: Tournament) {
-    // Trouver le gagnant (celui qui a gagné la finale)
     const finalMatch = tournament.matches.find(m => 
       m.round === Math.max(...tournament.matches.map(m => m.round)) && m.matchIndex === 0
     );
@@ -1402,12 +1305,10 @@ export class GameSessionService {
       finalRanking: this.calculateFinalRanking(tournament),
     });
 
-    // Faire quitter la room à tous les joueurs
     for (const player of tournament.players) {
       player.client.leave(tournamentRoom);
     }
 
-    // Supprimer le tournoi après un délai
     setTimeout(() => {
       delete this.activeTournaments[tournament.id];
     }, 30000);
@@ -1417,25 +1318,21 @@ export class GameSessionService {
     const tournament = this.activeTournaments[tournamentId];
     if (!tournament) return;
 
-    this.logger.warn(`🚫 Cancelling tournament ${tournamentId}: ${reason}`);
+    this.logger.warn(`Cancelling tournament ${tournamentId}: ${reason}`);
 
     const tournamentRoom = `tournament-${tournament.id}`;
     
-    // Notifier tous les joueurs que le tournoi est annulé
     this.server.to(tournamentRoom).emit('tournament-cancelled', {
       tournamentId: tournament.id,
       reason,
     });
 
-    // Faire quitter la room à tous les joueurs
     for (const player of tournament.players) {
       player.client.leave(tournamentRoom);
     }
 
-    // Nettoyer toutes les sessions de jeu actives liées au tournoi
     for (const [roomId, session] of Object.entries(this.activeGameSessions)) {
       if (session.tournamentId === tournamentId) {
-        // Arrêter la game loop si elle existe
         if (session.gametype === GametypeEnum.PONG && session.data) {
           const pongData = session.data as PongData;
           if (pongData.gameLoopInterval) {
@@ -1446,19 +1343,16 @@ export class GameSessionService {
       }
     }
 
-    // Supprimer le tournoi
     delete this.activeTournaments[tournamentId];
   }
 
   private calculateFinalRanking(tournament: Tournament): { rank: number; player: { id: string; nickname: string } }[] {
     const ranking: { rank: number; player: { id: string; nickname: string } }[] = [];
     
-    // Le gagnant est 1er
     if (tournament.winner) {
       ranking.push({ rank: 1, player: { id: tournament.winner.user.id, nickname: tournament.winner.user.nickname } });
     }
 
-    // Le perdant de la finale est 2ème
     const finalMatch = tournament.matches.find(m => 
       m.round === Math.max(...tournament.matches.map(m => m.round)) && m.matchIndex === 0
     );
@@ -1469,7 +1363,6 @@ export class GameSessionService {
       }
     }
 
-    // Les perdants des demi-finales sont 3ème
     const semiMatches = tournament.matches.filter(m => m.round === (tournament.players.length > 4 ? 1 : 0));
     let rank = 3;
     for (const match of semiMatches) {
@@ -1513,11 +1406,9 @@ export class GameSessionService {
     }
   }
 
-  // Permettre à un joueur de quitter le lobby
   async removePlayerFromLobby(client: Socket, gametype: GametypeEnum) {
     const user = client.handshake.auth.user as User;
     
-    // Chercher le lobby du joueur
     let playerLobby: { id: string; gametype: GametypeEnum; players: UserQueue[]; createdAt: Date; timer: NodeJS.Timeout | null; timeRemaining: number; } | null = null;
     let playerLobbyId: string | null = null;
     
@@ -1538,7 +1429,6 @@ export class GameSessionService {
     playerLobby.players.splice(playerIdx, 1);
     client.leave(`lobby-${playerLobby.id}`);
     
-    // Retirer aussi de la queue si le joueur y est encore
     const queueIdx = this.userQueue.findIndex(uq => uq.user.id === user.id);
     if (queueIdx !== -1) {
       this.userQueue.splice(queueIdx, 1);
@@ -1546,7 +1436,6 @@ export class GameSessionService {
 
     this.logger.debug(`Player ${user.email} left lobby ${playerLobby.id}. Remaining: ${playerLobby.players.length}`);
 
-    // Notifier les autres joueurs
     const playersInfo = playerLobby.players.map(p => ({
       id: p.user.id,
       email: p.user.email,
@@ -1570,7 +1459,6 @@ export class GameSessionService {
     players: [UserQueue, ...UserQueue[]] | [LobbyPlayer, ...LobbyPlayer[]],
     gametype: GametypeEnum,
   ) {
-    // Toujours lancer le jeu directement
     this.handleGame(gametype, players);
   }
 
@@ -1597,7 +1485,6 @@ export class GameSessionService {
     return [tournamentHistory];
   }
 
-  // TODO : handle game
   async handleGame(gametype: GametypeEnum, usersList: (UserQueue | LobbyPlayer)[]) {
     const roomId = uuidv4();
 
@@ -1607,7 +1494,6 @@ export class GameSessionService {
       return 'joinedAt' in player && 'client' in player;
     };
 
-    // Convert to a compatible format for ActiveGameSession
     const players: UserQueue[] = usersList.map((player) => {
       if (isLobbyPlayer(player)) {
         return {
@@ -1658,13 +1544,12 @@ export class GameSessionService {
     }
 
     while (true) {
-      // Wait all players to enter the game
       if (
         (await room.fetchSockets()).length === activeGameSession.players.length
       ) {
         break;
       }
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
+      await new Promise((resolve) => setTimeout(resolve, 1000)); 
       this.logger.debug(`Room : ${roomId} - Waiting for players to enter...`);
     }
 
@@ -1673,7 +1558,6 @@ export class GameSessionService {
     room.emit('ingame-comm', this.omitSensitives(activeGameSession));
 
     while (true) {
-      // Wait all players to be ready
       const allReady = activeGameSession.players.every(
         (userQueue) =>
           userQueue.client.handshake.auth.user.id in
@@ -1685,7 +1569,7 @@ export class GameSessionService {
       if (allReady) {
         break;
       }
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       this.logger.debug(
         `Room : ${roomId} - Waiting for players to be ready...`,
       );
@@ -1810,7 +1694,6 @@ export class GameSessionService {
 
     room.emit('ingame-comm', this.omitSensitives(activeGameSession));
 
-    // Game finished: set all players back to online and clear currentGameId
     await Promise.all(
       activeGameSession.players.map((p) =>
         this.usersService.updateUserStatus(p.user.id, 'online'),
@@ -1866,7 +1749,6 @@ export class GameSessionService {
     const user = client.handshake.auth.user as User;
     const activeGameSession = this.getActiveGameSessionByUserId(user.id);
     
-    // Accepter LOBBY (pour les matchs de tournoi) ou NEXT_ROUND_SELECT
     if (activeGameSession.status === IngameStatus.NEXT_ROUND_SELECT || 
         activeGameSession.status === IngameStatus.LOBBY) {
       if (activeGameSession.lobbyData[user.id].ready === true) {
@@ -1874,7 +1756,6 @@ export class GameSessionService {
       }
       activeGameSession.lobbyData[user.id].color = gameConfigDto.color;
       activeGameSession.lobbyData[user.id].map = gameConfigDto.map;
-      // Ne pas mettre ready ici pour LOBBY, cela sera fait par ready-user
       if (activeGameSession.status === IngameStatus.NEXT_ROUND_SELECT) {
         activeGameSession.lobbyData[user.id].ready = true;
       }
@@ -1930,7 +1811,6 @@ export class GameSessionService {
     }
 
     if (activeGameSession.data?.player1.user.id === user.id) {
-      // Vérifier la collision avec les murs avant de mettre à jour la position
       const wouldCollide = this.checkPlayerWallCollision(
         data.x,
         data.y,
@@ -1946,7 +1826,6 @@ export class GameSessionService {
       activeGameSession.data.player1.orentation = data.orientation;
       activeGameSession.data.player1.balls = data.balls;
     } else if (activeGameSession.data?.player2.user.id === user.id) {
-      // Vérifier la collision avec les murs avant de mettre à jour la position
       const wouldCollide = this.checkPlayerWallCollision(
         data.x,
         data.y,
@@ -2017,23 +1896,19 @@ export class GameSessionService {
       return;
     }
 
-    // Update user status in database
     await this.usersService.updateUserStatus(user.id, data.status);
 
-    // Broadcast status change to all connected clients so they see it in friends list
     this.server.emit('user-status-updated', {
       userId: user.id,
       status: data.status,
     });
   }
 
-  // ========== PONG GAME LOGIC ==========
 
   private initializePongGame(session: ActiveGameSession<PongData>) {
     const player1Config = session.lobbyData[session.players[0].user.id];
     const player2Config = session.lobbyData[session.players[1].user.id];
 
-    // Initialiser les données du jeu Pong
     session.data = {
       gameWidth: 1200,
       gameHeight: 800,
@@ -2064,40 +1939,36 @@ export class GameSessionService {
     };
 
     this.logger.debug(`Initialized Pong game for session ${session.id}`);
-    this.logger.debug(`🎮 Player 1: ${session.players[0].user.nickname} (${player1Config?.color}) speed: ${player1Config?.paddleSpeed}`);
-    this.logger.debug(`🎮 Player 2: ${session.players[1].user.nickname} (${player2Config?.color}) speed: ${player2Config?.paddleSpeed}`);
+    this.logger.debug(` Player 1: ${session.players[0].user.nickname} (${player1Config?.color}) speed: ${player1Config?.paddleSpeed}`);
+    this.logger.debug(` Player 2: ${session.players[1].user.nickname} (${player2Config?.color}) speed: ${player2Config?.paddleSpeed}`);
 
-    // Démarrer la boucle de jeu (1ms = 1000 FPS pour une fluidité maximale)
     const gameLoop = setInterval(() => {
       this.updatePongGame(session);
     }, 1);
 
     session.data.gameLoopInterval = gameLoop;
-    this.logger.debug(`✅ Game loop started for session ${session.id}`);
+    this.logger.debug(` Game loop started for session ${session.id}`);
   }
 
   private updatePongGame(session: ActiveGameSession<PongData>) {
     if (!session.data || session.status !== IngameStatus.IN_PROGRESS) {
       if (session.data?.gameLoopInterval) {
         clearInterval(session.data.gameLoopInterval);
-        this.logger.debug(`❌ Game loop stopped for session ${session.id}`);
+        this.logger.debug(` Game loop stopped for session ${session.id}`);
       }
       return;
     }
 
     const data = session.data;
 
-    // Mettre à jour la position de la balle (vitesse ajustée pour le 1ms interval)
     data.ball.x += data.ball.vx * 0.1;
     data.ball.y += data.ball.vy * 0.1;
 
-    // Collision avec les murs haut et bas
     if (data.ball.y - data.ball.radius <= 0 || data.ball.y + data.ball.radius >= data.gameHeight) {
       data.ball.vy = -data.ball.vy;
       data.ball.y = Math.max(data.ball.radius, Math.min(data.gameHeight - data.ball.radius, data.ball.y));
     }
 
-    // Collision avec la raquette du joueur 1 (gauche)
     if (
       data.ball.x - data.ball.radius <= data.paddleWidth &&
       data.ball.y >= data.player1.y &&
@@ -2106,12 +1977,10 @@ export class GameSessionService {
       data.ball.vx = Math.abs(data.ball.vx);
       data.ball.x = data.paddleWidth + data.ball.radius;
       
-      // Ajouter de l'effet selon où la balle frappe la raquette
       const hitPos = (data.ball.y - data.player1.y) / data.paddleHeight - 0.5;
       data.ball.vy += hitPos * 3;
     }
 
-    // Collision avec la raquette du joueur 2 (droite)
     if (
       data.ball.x + data.ball.radius >= data.gameWidth - data.paddleWidth &&
       data.ball.y >= data.player2.y &&
@@ -2120,31 +1989,25 @@ export class GameSessionService {
       data.ball.vx = -Math.abs(data.ball.vx);
       data.ball.x = data.gameWidth - data.paddleWidth - data.ball.radius;
       
-      // Ajouter de l'effet
       const hitPos = (data.ball.y - data.player2.y) / data.paddleHeight - 0.5;
       data.ball.vy += hitPos * 3;
     }
 
-    // Vérifier les points marqués
     if (data.ball.x - data.ball.radius <= 0) {
-      // Joueur 2 marque un point
       data.player2.score++;
       this.resetPongBall(data);
       this.logger.debug(`Player 2 scores! Score: ${data.player1.score} - ${data.player2.score}`);
     } else if (data.ball.x + data.ball.radius >= data.gameWidth) {
-      // Joueur 1 marque un point
       data.player1.score++;
       this.resetPongBall(data);
       this.logger.debug(`Player 1 scores! Score: ${data.player1.score} - ${data.player2.score}`);
     }
 
-    // Vérifier la fin de partie
     if (data.player1.score >= data.maxScore || data.player2.score >= data.maxScore) {
       this.endPongGame(session);
       return;
     }
 
-    // Envoyer les mises à jour à tous les joueurs (uniquement les données nécessaires, pas d'objets circulaires)
     const gameState = {
       roomId: session.id,
       ball: {
@@ -2173,7 +2036,6 @@ export class GameSessionService {
     data.ball.x = data.gameWidth / 2;
     data.ball.y = data.gameHeight / 2;
     
-    // Vitesse aléatoire
     const angle = (Math.random() - 0.5) * Math.PI / 3;
     const speed = 5;
     data.ball.vx = Math.cos(angle) * speed * (Math.random() > 0.5 ? 1 : -1);
@@ -2201,14 +2063,12 @@ export class GameSessionService {
       },
     });
 
-    // Sauvegarder dans l'historique
     this.gameHistoryService.create({
       gametype: session.gametype,
       players: [session.data!.player1.user.id, session.data!.player2.user.id],
       winner: winner.id,
     });
 
-    // Si c'est un match de tournoi, passer au match suivant
     if (session.tournamentId && session.matchId) {
       this.handleTournamentMatchEnd(session.id, winner.id);
     }
@@ -2219,7 +2079,7 @@ export class GameSessionService {
     const session = this.activeGameSessions[data.roomId];
 
     if (!session || !session.data || session.gametype !== GametypeEnum.PONG) {
-      this.logger.warn(`❌ handlePaddleMove: Invalid session or not a Pong game`);
+      this.logger.warn(` handlePaddleMove: Invalid session or not a Pong game`);
       return;
     }
 
@@ -2227,7 +2087,6 @@ export class GameSessionService {
     const isPlayer1 = session.players[0].user.id === user.id;
     const player = isPlayer1 ? pongData.player1 : pongData.player2;
 
-    // Déplacer la raquette
     if (data.direction === 'up') {
       player.y = Math.max(0, player.y - player.speed);
     } else if (data.direction === 'down') {
@@ -2243,21 +2102,18 @@ export class GameSessionService {
     const session = this.activeGameSessions[data.roomId];
 
     if (!session) {
-      this.logger.warn(`❌ handleSpectateGame: Session ${data.roomId} not found`);
+      this.logger.warn(`handleSpectateGame: Session ${data.roomId} not found`);
       return;
     }
 
-    // Ajouter le spectateur à la room
     client.join(data.roomId);
-    this.logger.debug(`👁️ User ${user.nickname} joined room ${data.roomId} as spectator`);
+    this.logger.debug(`User ${user.nickname} joined room ${data.roomId} as spectator`);
 
-    // Envoyer l'état actuel du jeu au spectateur
     if (session.gametype === GametypeEnum.SHOOT && session.data) {
       const shootData = session.data as any;
       
-      // Vérifier que le jeu est initialisé
       if (!shootData.player1 || !shootData.player2 || !shootData.fireballs || !shootData.walls) {
-        this.logger.warn(`⚠️ Shoot game not fully initialized yet for spectator`);
+        this.logger.warn(`Shoot game not fully initialized yet for spectator`);
         return;
       }
 
@@ -2295,7 +2151,6 @@ export class GameSessionService {
     }
   }
 
-  // ==================== SHOOT GAME LOGIC ====================
 
   async handlePlayerAction(
     client: Socket,
@@ -2305,31 +2160,31 @@ export class GameSessionService {
     const session = this.activeGameSessions[data.roomId];
 
     if (!session || !session.data || session.gametype !== GametypeEnum.SHOOT) {
-      this.logger.warn(`❌ handlePlayerAction: Invalid session or not a Shoot game`);
+      this.logger.warn(`handlePlayerAction: Invalid session or not a Shoot game`);
       return;
     }
 
-    const shootData = session.data as any; // Sera typé correctement plus tard
+    const shootData = session.data as any;
     const isPlayer1 = session.players[0].user.id === user.id;
     const player = isPlayer1 ? shootData.player1 : shootData.player2;
 
-    // Déplacer le joueur
+    
     if (data.move.x !== 0 || data.move.y !== 0) {
-      // Normaliser le vecteur de mouvement
+      
       const length = Math.sqrt(data.move.x * data.move.x + data.move.y * data.move.y);
       if (length > 0) {
         const normalizedX = data.move.x / length;
         const normalizedY = data.move.y / length;
         
-        // Calculer la nouvelle position
+        
         const newX = player.x + normalizedX * player.speed;
         const newY = player.y + normalizedY * player.speed;
 
-        // Vérifier les limites du terrain
+        
         const boundedX = Math.max(0, Math.min(shootData.gameWidth - player.width, newX));
         const boundedY = Math.max(0, Math.min(shootData.gameHeight - player.height, newY));
 
-        // Vérifier la collision avec les murs
+        
         const wouldCollide = this.checkPlayerWallCollision(
           boundedX,
           boundedY,
@@ -2338,18 +2193,18 @@ export class GameSessionService {
           shootData.walls
         );
 
-        // Appliquer le mouvement seulement s'il n'y a pas de collision
+        
         if (!wouldCollide) {
           player.x = boundedX;
           player.y = boundedY;
         }
 
-        // Sauvegarder la dernière direction pour le tir
+        
         player.lastDirection = { x: normalizedX, y: normalizedY };
       }
     }
 
-    // Tirer
+    
     if (data.fire) {
       const now = Date.now();
       if (now - player.lastFire >= player.fireCooldown) {
@@ -2371,7 +2226,7 @@ export class GameSessionService {
       }
     }
 
-    // Dash
+    
     if (data.dash) {
       const now = Date.now();
       if (player.canDash && now - player.lastDashTime >= player.dashCooldown) {
@@ -2380,20 +2235,20 @@ export class GameSessionService {
         player.lastDashTime = now;
         player.canDash = false;
 
-        // Dash dans la dernière direction
+        
         const direction = player.lastDirection.x !== 0 || player.lastDirection.y !== 0 
           ? player.lastDirection 
           : { x: isPlayer1 ? 1 : -1, y: 0 };
 
-        // Calculer la nouvelle position après le dash
+        
         const newX = player.x + direction.x * 100;
         const newY = player.y + direction.y * 100;
 
-        // Vérifier les limites du terrain
+        
         const boundedX = Math.max(0, Math.min(shootData.gameWidth - player.width, newX));
         const boundedY = Math.max(0, Math.min(shootData.gameHeight - player.height, newY));
 
-        // Vérifier la collision avec les murs
+        
         const wouldCollide = this.checkPlayerWallCollision(
           boundedX,
           boundedY,
@@ -2402,14 +2257,14 @@ export class GameSessionService {
           shootData.walls
         );
 
-        // Appliquer le dash seulement s'il n'y a pas de collision
+        
         if (!wouldCollide) {
           player.x = boundedX;
           player.y = boundedY;
         }
-        // Si collision, le joueur reste à sa position actuelle
+        
 
-        // Réactiver le dash après le cooldown
+        
         setTimeout(() => {
           player.canDash = true;
         }, player.dashCooldown);
@@ -2421,7 +2276,7 @@ export class GameSessionService {
     const player1Config = session.lobbyData[session.players[0].user.id];
     const player2Config = session.lobbyData[session.players[1].user.id];
 
-    // Si un des joueurs choisit map2, on utilise map2
+    
     const selectedMap = player1Config?.map === 'map2' || player2Config?.map === 'map2' ? 'map2' : 'map1';
 
     session.data = {
@@ -2470,27 +2325,27 @@ export class GameSessionService {
     };
 
     this.logger.debug(`Initialized Shoot game for session ${session.id}`);
-    this.logger.debug(`🔫 Player 1: ${session.players[0].user.nickname} (${player1Config?.color})`);
-    this.logger.debug(`🔫 Player 2: ${session.players[1].user.nickname} (${player2Config?.color})`);
+    this.logger.debug(` Player 1: ${session.players[0].user.nickname} (${player1Config?.color})`);
+    this.logger.debug(` Player 2: ${session.players[1].user.nickname} (${player2Config?.color})`);
 
-    // Démarrer la boucle de jeu (60 FPS)
+    
     const gameLoop = setInterval(() => {
       this.updateShootGame(session);
-    }, 16); // ~60 FPS
+    }, 16); 
 
     session.data.gameLoopInterval = gameLoop;
-    this.logger.debug(`✅ Shoot game loop started for session ${session.id}`);
+    this.logger.debug(` Shoot game loop started for session ${session.id}`);
   }
 
   private getShootWalls(mapId: string): any[] {
-    // Map 1: Forêt
+    
     if (mapId === 'map1') {
       return [
         { x: 600, y: 200, width: 50, height: 200 },
         { x: 1050, y: 350, width: 50, height: 200 },
       ];
     }
-    // Map 2: Cité
+    
     else if (mapId === 'map2') {
       return [
         { x: 500, y: 100, width: 100, height: 300 },
@@ -2508,37 +2363,37 @@ export class GameSessionService {
     walls: any[]
   ): boolean {
     for (const wall of walls) {
-      // Vérifier si les rectangles se chevauchent (AABB collision)
+      
       if (
         playerX < wall.x + wall.width &&
         playerX + playerWidth > wall.x &&
         playerY < wall.y + wall.height &&
         playerY + playerHeight > wall.y
       ) {
-        return true; // Collision détectée
+        return true; 
       }
     }
-    return false; // Pas de collision
+    return false; 
   }
 
   private updateShootGame(session: ActiveGameSession<any>) {
     if (!session.data || session.status !== IngameStatus.IN_PROGRESS) {
       if (session.data?.gameLoopInterval) {
         clearInterval(session.data.gameLoopInterval);
-        this.logger.debug(`❌ Shoot game loop stopped for session ${session.id}`);
+        this.logger.debug(` Shoot game loop stopped for session ${session.id}`);
       }
       return;
     }
 
     const data = session.data;
 
-    // Mettre à jour les fireballs
+    
     for (let i = data.fireballs.length - 1; i >= 0; i--) {
       const fireball = data.fireballs[i];
       fireball.x += fireball.vx;
       fireball.y += fireball.vy;
 
-      // Supprimer si hors limites
+      
       if (
         fireball.x < 0 ||
         fireball.x > data.gameWidth ||
@@ -2549,7 +2404,7 @@ export class GameSessionService {
         continue;
       }
 
-      // Collision avec les murs
+      
       let hitWall = false;
       for (const wall of data.walls) {
         const closestX = Math.max(wall.x, Math.min(fireball.x, wall.x + wall.width));
@@ -2569,11 +2424,11 @@ export class GameSessionService {
         continue;
       }
 
-      // Collision avec les joueurs
+      
       const players = [data.player1, data.player2];
       let playerHit = false;
       for (const player of players) {
-        if (fireball.playerId === player.user.id) continue; // Ne pas toucher son propre joueur
+        if (fireball.playerId === player.user.id) continue; 
 
         if (
           fireball.x > player.x &&
@@ -2583,13 +2438,13 @@ export class GameSessionService {
         ) {
           player.health -= 10;
 
-          // Vérifier la fin du jeu
+          
           if (player.health <= 0) {
             this.endShootGame(session);
             return;
           }
 
-          // Réinitialiser les positions des joueurs et supprimer toutes les balles
+          
           data.player1.x = 150;
           data.player1.y = 300;
           data.player2.x = 1475;
@@ -2601,13 +2456,13 @@ export class GameSessionService {
         }
       }
 
-      // Si un joueur a été touché, on a réinitialisé toutes les balles, donc on sort de la boucle
+      
       if (playerHit) {
         break;
       }
     }
 
-    // Envoyer les mises à jour
+    
     const gameState = {
       roomId: session.id,
       players: [
@@ -2659,14 +2514,14 @@ export class GameSessionService {
       winnerName: winner.nickname,
     });
 
-    // Sauvegarder dans l'historique
+    
     this.gameHistoryService.create({
       gametype: session.gametype,
       players: [session.data.player1.user.id, session.data.player2.user.id],
       winner: winner.id,
     });
 
-    // Si c'est un match de tournoi, passer au match suivant
+    
     if (session.tournamentId && session.matchId) {
       this.handleTournamentMatchEnd(session.id, winner.id);
     }

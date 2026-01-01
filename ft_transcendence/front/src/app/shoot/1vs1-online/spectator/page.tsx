@@ -199,19 +199,18 @@ export default function SpectatorPage() {
   const [winner, setWinner] = useState<{ winnerId: string; winnerName: string } | null>(null);
 
   useEffect(() => {
-    console.log('👁️ Shoot Spectator mode initialized');
-    console.log('👁️ Room ID:', roomId);
-    console.log('👁️ Tournament ID:', tournamentId);
-    console.log('👁️ Match ID:', matchId);
+    console.log('️ Shoot Spectator mode initialized');
+    console.log('️ Room ID:', roomId);
+    console.log('️ Tournament ID:', tournamentId);
+    console.log('️ Match ID:', matchId);
   }, [roomId, tournamentId, matchId]);
 
   useEffect(() => {
     const client = gameData.client;
     if (!client || !roomId) return;
 
-    console.log('👁️ Setting up spectator listeners for room:', roomId);
+    console.log('️ Setting up spectator listeners for room:', roomId);
 
-    // Demander à rejoindre en tant que spectateur
     client.emit('spectate-game', { 
       roomId,
       tournamentId,
@@ -219,19 +218,16 @@ export default function SpectatorPage() {
       gametype: GametypeEnum.SHOOT
     });
 
-    // Écouter les mises à jour du jeu
     const handleShootUpdate = (data: any) => {
       if (data.roomId === roomId) {
         setGameState(data);
       }
     };
 
-    // Écouter la fin du jeu
     const handleGameEnded = (data: { winnerId: string; winnerName: string }) => {
-      console.log('🏁 Game ended (spectator view):', data);
+      console.log(' Game ended (spectator view):', data);
       setWinner(data);
 
-      // Rediriger vers le tournoi après 3 secondes
       setTimeout(() => {
         if (tournamentId) {
           router.push(`/shoot/1vs1-online/tournament?tournamentId=${tournamentId}`);
@@ -240,7 +236,7 @@ export default function SpectatorPage() {
     };
 
     const handleTournamentEnded = (data: any) => {
-      console.log('🏆 Tournament ended:', data);
+      console.log(' Tournament ended:', data);
       setTimeout(() => {
         router.push('/shoot');
       }, 5000);
@@ -257,7 +253,6 @@ export default function SpectatorPage() {
     };
   }, [gameData.client, roomId, tournamentId, matchId, router]);
 
-  // Rendu du canvas
   useEffect(() => {
     if (!gameState || !canvasRef.current) return;
 
@@ -265,28 +260,23 @@ export default function SpectatorPage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Effacer le canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Dessiner les murs
     ctx.fillStyle = '#444';
     gameState.walls.forEach(wall => {
       ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
     });
 
-    // Dessiner les joueurs
     gameState.players.forEach(player => {
       ctx.fillStyle = player.color;
       ctx.fillRect(player.x, player.y, player.width, player.height);
 
-      // Nom du joueur au-dessus
       ctx.fillStyle = '#fff';
       ctx.font = '14px Arial';
       ctx.textAlign = 'center';
       ctx.fillText(player.name, player.x + player.width / 2, player.y - 5);
     });
 
-    // Dessiner les fireballs
     gameState.fireballs.forEach(fireball => {
       ctx.fillStyle = fireball.color;
       ctx.beginPath();
@@ -307,7 +297,7 @@ export default function SpectatorPage() {
     return (
       <div style={styles.winnerOverlay as React.CSSProperties}>
         <div style={styles.winnerCard as React.CSSProperties}>
-          <div style={styles.winnerTitle as React.CSSProperties}>🏆 Victoire !</div>
+          <div style={styles.winnerTitle as React.CSSProperties}> Victoire !</div>
           <div style={styles.winnerName as React.CSSProperties}>{winner.winnerName}</div>
           <div style={styles.redirectMessage as React.CSSProperties}>
             Retour au tournoi dans quelques secondes...
@@ -322,7 +312,7 @@ export default function SpectatorPage() {
       <div style={styles.container as React.CSSProperties}>
         <div style={styles.header as React.CSSProperties}>
           <h1 style={styles.title as React.CSSProperties}>Mode Spectateur</h1>
-          <div style={styles.badge as React.CSSProperties}>🎮 SHOOT - EN DIRECT</div>
+          <div style={styles.badge as React.CSSProperties}> SHOOT - EN DIRECT</div>
         </div>
         <div style={styles.waitingMessage as React.CSSProperties}>
           En attente du début du match...
@@ -347,7 +337,7 @@ export default function SpectatorPage() {
     <div style={styles.container as React.CSSProperties}>
       <div style={styles.header as React.CSSProperties}>
         <h1 style={styles.title as React.CSSProperties}>Mode Spectateur</h1>
-        <div style={styles.badge as React.CSSProperties}>🎮 SHOOT - EN DIRECT</div>
+        <div style={styles.badge as React.CSSProperties}> SHOOT - EN DIRECT</div>
       </div>
 
       <div style={styles.healthBar as React.CSSProperties}>

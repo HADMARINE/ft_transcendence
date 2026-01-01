@@ -110,7 +110,7 @@ export default function HomePage() {
 
   return (
     <div style={styles.container}>
-      {/* Bouton Settings en haut à gauche */}
+      {}
       <button
         style={{
           position: "absolute",
@@ -134,12 +134,12 @@ export default function HomePage() {
           e.currentTarget.style.color = "#4cc9f0";
         }}
       >
-        ⚙️
+        ️
       </button>
       <h1 style={styles.title}>Sélectionnez un jeu</h1>
 
       <div style={styles.gamesContainer}>
-        {/* Carte du jeu Pong */}
+        {}
         <div style={styles.gameCard} onClick={() => router.push("/pong")}>
           <div
             style={{
@@ -159,7 +159,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Carte du jeu Shoot */}
+        {}
         <div style={styles.gameCard} onClick={() => router.push("/shoot")}>
           <div
             style={{
@@ -180,7 +180,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Balles animées en arrière-plan */}
+      {}
       {balls.map((ball) => (
         <div
           key={ball.id}

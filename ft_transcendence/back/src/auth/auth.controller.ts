@@ -40,7 +40,7 @@ export class AuthController {
       this.authService.getCookieConfigTokenGenerationIntegrated(user);
     res.setCookie(...cookieResult);
 
-    // Mark user as online on successful login
+    
     void this.usersService.updateUserStatus(user.id, 'online');
 
     return cookieResult[1];
@@ -53,17 +53,17 @@ export class AuthController {
     @Req() req: RequestWithUser,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
-    // Mark user as offline on logout
+    
     if (req.user?.id) {
       void this.usersService.updateUserStatus(req.user.id, 'offline');
     }
 
     res.clearCookie('Authorization', {
-      // httpOnly: true,
-      // path: '/',
-      // maxAge: parseInt(
-      //   ms(this.configService.getOrThrow('ACCESS_TOKEN_EXPIRATION_TIME')),
-      // ),
+      
+      
+      
+      
+      
     });
     return 'Hello';
   }

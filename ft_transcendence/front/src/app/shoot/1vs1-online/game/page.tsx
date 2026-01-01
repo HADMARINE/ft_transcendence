@@ -93,11 +93,11 @@ const ShootGame = () => {
   const keysPressed = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    console.log('🎮 === SHOOT GAME PAGE LOADED ===');
-    console.log('🎮 Room ID:', roomId);
-    console.log('🎮 Tournament ID:', tournamentId);
-    console.log('🎮 Match ID:', matchId);
-    console.log('🎮 Client available:', !!gameData.client);
+    console.log(' === SHOOT GAME PAGE LOADED ===');
+    console.log(' Room ID:', roomId);
+    console.log(' Tournament ID:', tournamentId);
+    console.log(' Match ID:', matchId);
+    console.log(' Client available:', !!gameData.client);
   }, []);
 
   useEffect(() => {
@@ -116,42 +116,39 @@ const ShootGame = () => {
     const client = gameData.client;
     if (!client || !roomId) return;
 
-    console.log('🎮 Setting up shoot game listeners for room:', roomId);
+    console.log(' Setting up shoot game listeners for room:', roomId);
 
-    // Écouter les mises à jour du jeu
     const handleShootUpdate = (data: any) => {
       if (data.roomId === roomId) {
         setGameState(data);
       }
     };
 
-    // Écouter la fin du jeu
     const handleGameEnded = (data: any) => {
-      console.log('🏁 Game ended:', data);
+      console.log(' Game ended:', data);
       setWinner(data);
       
-      // Rediriger automatiquement après 3 secondes
       setTimeout(() => {
         if (tournamentId) {
-          console.log('🎪 Redirecting to tournament page...');
+          console.log(' Redirecting to tournament page...');
           router.push(`/shoot/1vs1-online/tournament?tournamentId=${tournamentId}`);
         } else {
-          console.log('🏠 Redirecting to home page...');
+          console.log(' Redirecting to home page...');
           router.push('/shoot');
         }
       }, 3000);
     };
 
     const handleTournamentCancelled = (data: { tournamentId: string; reason: string }) => {
-      console.log('🚫 Tournament cancelled:', data);
+      console.log(' Tournament cancelled:', data);
       alert(`Tournoi annulé: ${data.reason}`);
       router.push('/shoot');
     };
 
     const handleTournamentEnded = (data: any) => {
-      console.log('🏆 Tournament ended:', data);
+      console.log(' Tournament ended:', data);
       setTimeout(() => {
-        console.log('🏠 Redirecting to home page...');
+        console.log(' Redirecting to home page...');
         router.push('/shoot');
       }, 5000);
     };
@@ -169,7 +166,6 @@ const ShootGame = () => {
     };
   }, [gameData.client, roomId, tournamentId, router]);
 
-  // Gestion des touches du clavier
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const validKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'c', 'v'];
@@ -196,7 +192,6 @@ const ShootGame = () => {
     };
   }, []);
 
-  // Envoyer les commandes au serveur
   useEffect(() => {
     if (!gameData.client || !roomId) return;
 
@@ -208,28 +203,23 @@ const ShootGame = () => {
         dash: false,
       };
 
-      // Mouvement
       if (keysPressed.current.has('ArrowUp') || keysPressed.current.has('w')) actions.move.y = -1;
       if (keysPressed.current.has('ArrowDown') || keysPressed.current.has('s')) actions.move.y = 1;
       if (keysPressed.current.has('ArrowLeft') || keysPressed.current.has('a')) actions.move.x = -1;
       if (keysPressed.current.has('ArrowRight') || keysPressed.current.has('d')) actions.move.x = 1;
       
-      // Tir
       if (keysPressed.current.has('c')) actions.fire = true;
       
-      // Dash
       if (keysPressed.current.has('v')) actions.dash = true;
 
-      // Envoyer seulement si une action est effectuée
       if (actions.move.x !== 0 || actions.move.y !== 0 || actions.fire || actions.dash) {
         gameData.client?.emit('player-action', actions);
       }
-    }, 16); // ~60fps
+    }, 16);
 
     return () => clearInterval(interval);
   }, [gameData.client, roomId]);
 
-  // Rendu du jeu
   useEffect(() => {
     if (!gameState || !canvasRef.current) return;
 
@@ -240,11 +230,9 @@ const ShootGame = () => {
     const GAME_WIDTH = 1700;
     const GAME_HEIGHT = 750;
 
-    // Clear canvas
     ctx.fillStyle = '#16213e';
     ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    // Draw walls
     ctx.fillStyle = '#4a5568';
     if (gameState.walls) {
       gameState.walls.forEach((wall: any) => {
@@ -252,13 +240,11 @@ const ShootGame = () => {
       });
     }
 
-    // Draw players
     if (gameState.players) {
       gameState.players.forEach((player: any) => {
         ctx.fillStyle = player.color || '#00ccff';
         ctx.fillRect(player.x, player.y, player.width, player.height);
         
-        // Health bar above player
         const barWidth = player.width;
         const barHeight = 5;
         ctx.fillStyle = '#333';
@@ -268,7 +254,6 @@ const ShootGame = () => {
       });
     }
 
-    // Draw fireballs
     if (gameState.fireballs) {
       gameState.fireballs.forEach((fireball: any) => {
         ctx.fillStyle = fireball.color || '#ff6600';
@@ -278,7 +263,6 @@ const ShootGame = () => {
       });
     }
 
-    // Draw particles
     if (gameState.particles) {
       gameState.particles.forEach((particle: any) => {
         ctx.fillStyle = particle.color;

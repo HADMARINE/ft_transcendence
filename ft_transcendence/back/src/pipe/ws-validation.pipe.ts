@@ -8,16 +8,16 @@ import { ParametersInvalidException } from 'src/errors/exceptions/parameters-inv
 
 @Injectable()
 export class WsValidationPipe extends ValidationPipe {
-  // constructor(options?: ValidationPipe) {
-  //   super({
-  //     disableErrorMessages: true,
-  //     transform: true,
-  //     whitelist: true,
-  //     ...options,
-  //   });
-  // }
+  
+  
+  
+  
+  
+  
+  
+  
 
-  // eslint-disable-next-line @typescript-eslint/require-await
+  
   async transform(value: unknown, metadata: ArgumentMetadata) {
     if (typeof value === 'string') {
       try {

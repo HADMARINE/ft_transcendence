@@ -33,12 +33,12 @@ export class RolesGuard implements CanActivate {
       return false;
     }
 
-    // If no specific roles required, allow any authenticated user
+    
     if (!roles || roles.length === 0) {
       return true;
     }
 
-    // Check if user has any of the required roles
+    
     for (const ua of user.authority) {
       if (roles.includes(ua)) {
         return true;

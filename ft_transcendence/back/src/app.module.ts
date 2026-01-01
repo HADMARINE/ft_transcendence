@@ -46,7 +46,7 @@ import { GameSessionModule } from './game-session/game-session.module';
         abortEarly: true,
       },
     }),
-    // DB Module here
+    
     I18nModule.forRoot({
       fallbackLanguage: 'en-US',
       loaderOptions: {
@@ -78,7 +78,7 @@ import { GameSessionModule } from './game-session/game-session.module';
         type: 'sqlite',
         database: config.getOrThrow<string>('DB_ROOT'),
         autoLoadEntities: true,
-        synchronize: true, // Set to false in production
+        synchronize: true, 
       }),
     }),
     ErrorsModule,

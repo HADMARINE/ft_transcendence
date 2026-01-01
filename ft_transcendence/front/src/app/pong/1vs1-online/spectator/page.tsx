@@ -138,7 +138,7 @@ export default function PongSpectatorPage() {
   const [winner, setWinner] = useState<{ winnerId: string; winnerNickname: string; finalScore: { player1: number; player2: number } } | null>(null);
 
   useEffect(() => {
-    // Récupérer les paramètres de l'URL
+    
     const roomId = searchParams?.get("roomId");
     const tournamentId = searchParams?.get("tournamentId");
     const matchId = searchParams?.get("matchId");
@@ -158,13 +158,11 @@ export default function PongSpectatorPage() {
     if (!gameData.client) return;
 
     const handleSpectatorMode = (data: any) => {
-      console.log("👁️ Spectator mode data:", data);
+      console.log("️ Spectator mode data:", data);
       
-      // Réinitialiser l'état du jeu et le gagnant pour le nouveau match
       setGameState(null);
       setWinner(null);
       
-      // Mettre à jour les données du spectateur avec les noms des joueurs
       setSpectatorData({
         roomId: data.roomId,
         tournamentId: data.tournamentId,
@@ -173,18 +171,16 @@ export default function PongSpectatorPage() {
         player2: data.player2 || { id: "", nickname: "Joueur 2" },
       });
       
-      console.log("👁️ Players set:", {
+      console.log("️ Players set:", {
         player1: data.player1?.nickname,
         player2: data.player2?.nickname,
       });
     };
 
     const handlePongUpdate = (data: any) => {
-      // Mise à jour en temps réel du jeu
-      console.log("👁️ Pong update received (spectator):", data.roomId);
+      console.log("️ Pong update received (spectator):", data.roomId);
       setGameState(data);
       
-      // Mettre à jour aussi les scores dans spectatorData
       if (spectatorData && data.player1 && data.player2) {
         setSpectatorData(prev => {
           if (!prev) return prev;
@@ -209,41 +205,35 @@ export default function PongSpectatorPage() {
     };
 
     const handleGameEnded = (data: any) => {
-      console.log("✅ Match ended (spectator view):", data);
-      // Afficher la popup de victoire
+      console.log(" Match ended (spectator view):", data);
       setWinner({
         winnerId: data.winnerId,
         winnerNickname: data.winnerNickname,
         finalScore: data.finalScore,
       });
       
-      // Retourner au lobby du tournoi après 3 secondes
-      // Car les rôles peuvent changer (spectateur → joueur ou spectateur → spectateur)
       setTimeout(() => {
         if (spectatorData?.tournamentId) {
-          console.log("🔄 Redirecting to tournament lobby for role update...");
+          console.log(" Redirecting to tournament lobby for role update...");
           router.push(`/pong/1vs1-online/tournament?tournamentId=${spectatorData.tournamentId}`);
         }
       }, 3000);
     };
 
     const handleTournamentMatchEnded = (data: any) => {
-      console.log("✅ Tournament match ended (spectator view):", data);
-      // Attendre que le backend envoie spectator-mode pour le match suivant
-      // ou tournament-ended si c'est fini
+      console.log(" Tournament match ended (spectator view):", data);
     };
 
     const handleTournamentEnded = (data: any) => {
-      console.log("🏆 Tournament ended:", data);
-      // Retourner à la page home après 5 secondes (temps de voir le gagnant)
+      console.log(" Tournament ended:", data);
       setTimeout(() => {
-        console.log("🏠 Redirecting to home page...");
+        console.log(" Redirecting to home page...");
         router.push('/pong');
       }, 5000);
     };
 
     const handleTournamentCancelled = (data: { tournamentId: string; reason: string }) => {
-      console.log("🚫 Tournament cancelled:", data);
+      console.log(" Tournament cancelled:", data);
       alert(`Tournoi annulé: ${data.reason}`);
       router.push('/pong');
     };
@@ -265,7 +255,6 @@ export default function PongSpectatorPage() {
     };
   }, [gameData.client, router, spectatorData]);
 
-  // Rendu du jeu sur le canvas
   useEffect(() => {
     if (!canvasRef.current || !gameState) return;
 
@@ -276,11 +265,9 @@ export default function PongSpectatorPage() {
     let animationFrameId: number;
 
     const draw = () => {
-      // Nettoyer le canvas
       ctx.fillStyle = "#16213e";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Ligne centrale
       ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
       ctx.lineWidth = 2;
       ctx.setLineDash([10, 10]);
@@ -290,19 +277,16 @@ export default function PongSpectatorPage() {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Dessiner la raquette du joueur 1
       if (gameState.player1) {
         ctx.fillStyle = gameState.player1.color || "#4cc9f0";
         ctx.fillRect(10, gameState.player1.y, 10, 100);
       }
 
-      // Dessiner la raquette du joueur 2
       if (gameState.player2) {
         ctx.fillStyle = gameState.player2.color || "#f72585";
         ctx.fillRect(canvas.width - 20, gameState.player2.y, 10, 100);
       }
 
-      // Dessiner la balle
       if (gameState.ball) {
         ctx.fillStyle = "#f72585";
         ctx.beginPath();
@@ -348,7 +332,7 @@ export default function PongSpectatorPage() {
         <div style={styles.winnerOverlay as React.CSSProperties}>
           <div style={styles.winnerCard as React.CSSProperties}>
             <div style={styles.winnerTitle as React.CSSProperties}>
-              🏆 Victoire !
+               Victoire !
             </div>
             <div style={styles.winnerName as React.CSSProperties}>
               {winner.winnerNickname}
@@ -365,7 +349,7 @@ export default function PongSpectatorPage() {
       
       <div style={styles.header as React.CSSProperties}>
         <h1 style={styles.title as React.CSSProperties}>
-          👁️ Mode Spectateur
+          ️ Mode Spectateur
         </h1>
         <div style={styles.badge as React.CSSProperties}>
           Vous regardez le match

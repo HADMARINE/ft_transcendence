@@ -5,7 +5,7 @@ export async function getMyStatistics(): Promise<{
     wins: number;
     losses: number;
     totalGames: number;
-    victoryRate: number; // percentage
+    victoryRate: number; 
   };
   pong: {
     wins: number;

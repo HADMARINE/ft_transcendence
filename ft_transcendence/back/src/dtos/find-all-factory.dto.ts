@@ -13,6 +13,4 @@ export class FindAllFactoryDto {
   sort?: DataSortDto;
 }
 
-/**
- * Find all dto factory
- */
+

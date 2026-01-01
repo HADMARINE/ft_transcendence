@@ -168,7 +168,7 @@ const LoginPage = (props: { redirect?: string }) => {
       console.warn("Failed to persist auth token for websocket:", err);
     }
     
-    // Update user status to online after successful login
+    
     try {
       await updateUserStatus('online');
     } catch (err) {

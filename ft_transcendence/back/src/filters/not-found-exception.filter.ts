@@ -9,6 +9,6 @@ import { PageNotFoundException } from 'src/errors/exceptions/page-not-found.exce
 @Catch(NotFoundException)
 export class NotFoundExceptionFilter implements ExceptionFilter {
   catch(exception: NotFoundException, host: ArgumentsHost) {
-    throw new PageNotFoundException(); // TODO : test
+    throw new PageNotFoundException(); 
   }
 }

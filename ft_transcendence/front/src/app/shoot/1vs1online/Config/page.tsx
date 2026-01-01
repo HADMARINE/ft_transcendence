@@ -42,12 +42,10 @@ const GameCustomisation: React.FC = () => {
   const matchId = searchParams.get('matchId');
   const myUserId = gameData.user?.id;
 
-  // Variables calculées à partir de matchData
   const player1Name = matchData?.player1?.nickname || 'Joueur 1';
   const player2Name = matchData?.player2?.nickname || 'Joueur 2';
   const amIPlayer1 = matchData?.player1?.id === myUserId;
   
-  // Statuts prêt pour chaque joueur
   const player1Ready = amIPlayer1 ? isReady : opponentReady;
   const player2Ready = amIPlayer1 ? opponentReady : isReady;
 
@@ -67,7 +65,6 @@ const GameCustomisation: React.FC = () => {
       console.log('Config update received:', data);
       console.log('Data roomId:', data.roomId, 'Current roomId:', roomId);
       
-      // Le backend envoie déjà uniquement aux autres joueurs
       if (data.roomId === roomId) {
         console.log('Updating opponent config...');
         if (data.color) setOpponentColor(data.color);
@@ -169,7 +166,7 @@ const GameCustomisation: React.FC = () => {
 
   return (
     <div style={styles.container}>
-      {/* Match Info - Players Display */}
+      {}
       <h1 style={styles.title}>CONFIGURATION DU MATCH</h1>
       <p style={styles.subtitle}>Choisissez votre map et votre couleur</p>
 
@@ -186,7 +183,7 @@ const GameCustomisation: React.FC = () => {
             backgroundColor: player1Ready ? '#2ecc71' : '#e74c3c',
             color: 'white',
           }}>
-            {player1Ready ? '✓ Prêt' : 'En attente...'}
+            {player1Ready ? ' Prêt' : 'En attente...'}
           </span>
         </div>
 
@@ -204,12 +201,12 @@ const GameCustomisation: React.FC = () => {
             backgroundColor: player2Ready ? '#2ecc71' : '#e74c3c',
             color: 'white',
           }}>
-            {player2Ready ? '✓ Prêt' : 'En attente...'}
+            {player2Ready ? ' Prêt' : 'En attente...'}
           </span>
         </div>
       </div>
 
-      {/* Map Selection */}
+      {}
       <h2 style={styles.sectionTitle}>Sélection de la Map</h2>
       <div style={styles.mapsContainer}>
         <div 
@@ -249,7 +246,7 @@ const GameCustomisation: React.FC = () => {
         </div>
       </div>
       
-      {/* Color Selection */}
+      {}
       <div style={styles.configContainer}>
         <h2 style={styles.configTitle}>Votre Couleur</h2>
         <div style={styles.colorOptions}>
@@ -268,7 +265,7 @@ const GameCustomisation: React.FC = () => {
           ))}
         </div>
 
-        {/* Ready Button */}
+        {}
         <button
           onClick={handleReady}
           style={{
@@ -276,11 +273,11 @@ const GameCustomisation: React.FC = () => {
             ...(isReady ? styles.readyButtonReady : {}),
           }}
         >
-          {isReady ? '✓ PRÊT !' : 'JE SUIS PRÊT'}
+          {isReady ? ' PRÊT !' : 'JE SUIS PRÊT'}
         </button>
       </div>
 
-      {/* Waiting Messages */}
+      {}
       {isReady && !opponentReady && (
         <p style={styles.waitingMessage}>
           En attente de l'adversaire<span className="dots"></span>
