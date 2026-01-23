@@ -16,11 +16,11 @@ RUN mkdir -p /etc/apt/keyrings
 
 RUN update-locale
 RUN adduser --shell /bin/zsh --disabled-password --gecos "" ${USERNAME}
-# RUN chmod 777 -R /home/${USERNAME}
+RUN chmod 777 -R /home/${USERNAME}
 RUN adduser ${USERNAME} sudo
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-# RUN chsh -s ~/.zshrc
+RUN chsh -s ~/.zshrc
 
 USER ${USERNAME}
 WORKDIR /home/${USERNAME}
@@ -37,8 +37,12 @@ RUN sudo apt -y install docker-ce docker-ce-cli containerd.io docker-compose-plu
 
 RUN sudo curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash \
     && source ~/.profile \
-    && nvm install node \
-    && npm i -g yarn
+    && nvm install 20 \
+    && sudo chown -R ${USERNAME}:${USERNAME} /home/${USERNAME} \
+    && sudo chmod 777 -R /home/${USERNAME} \
+    # && sudo chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.nvm \
+    # && sudo chown -R ${USERNAME}:${USERNAME} /workspaces/tran/ft_transcendence \
+    && npm i -g yarn 
 
 
 # ZSH configuration
