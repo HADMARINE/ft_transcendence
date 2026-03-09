@@ -5,7 +5,7 @@ import { ErrorsModule } from './errors/errors.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import Joi from 'joi';
 import { CookieResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import {
   ThrottlerGuard,
   ThrottlerModule,
@@ -46,11 +46,11 @@ import { GameSessionModule } from './game-session/game-session.module';
         abortEarly: true,
       },
     }),
-    
+    // DB Module here
     I18nModule.forRoot({
       fallbackLanguage: 'en-US',
       loaderOptions: {
-        path: join(__dirname, '/i18n/'),
+        path: resolve(__dirname, '../../src/i18n/'),
         watch: true,
       },
       resolvers: [
@@ -78,7 +78,7 @@ import { GameSessionModule } from './game-session/game-session.module';
         type: 'sqlite',
         database: config.getOrThrow<string>('DB_ROOT'),
         autoLoadEntities: true,
-        synchronize: true, 
+        synchronize: true, // Set to false in production
       }),
     }),
     ErrorsModule,

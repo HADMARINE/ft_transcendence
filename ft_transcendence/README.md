@@ -1,14 +1,10 @@
-# ft_transcendence
+export QUICKCERT_PASSWORD="password"
 
-Pour lancer
-node 20 sinon boom boom
-yarn
-yarn quickcert decrypt (suivre les prompts)
+chmod +x generate-certs.sh
+./generate-certs.sh
 
-front: yarn dev
-back: yarn start:dev
+yarn dev:https
 
-env password : password
-
-Pour obtenir les details de l'user
-Utilise : getUserProfile(id: string)
+make build 
+make start  
+make shell   

@@ -92,9 +92,9 @@ const PongGame = () => {
   const keysPressed = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    console.log(' === PONG GAME PAGE LOADED ===');
-    console.log(' Room ID:', roomId);
-    console.log(' Client available:', !!gameData.client);
+    console.log('🎮 === PONG GAME PAGE LOADED ===');
+    console.log('🎮 Room ID:', roomId);
+    console.log('🎮 Client available:', !!gameData.client);
   }, []);
 
   useEffect(() => {
@@ -113,36 +113,40 @@ const PongGame = () => {
     const client = gameData.client;
     if (!client || !roomId) return;
 
-    console.log(' Setting up pong game listeners for room:', roomId);
+    console.log('🎮 Setting up pong game listeners for room:', roomId);
 
+    // Écouter les mises à jour du jeu
     const handlePongUpdate = (data: any) => {
       if (data.roomId === roomId) {
         setGameState(data);
       }
     };
 
+    // Écouter la fin du jeu
     const handleGameEnded = (data: any) => {
-      console.log(' Game ended:', data);
+      console.log('🏁 Game ended:', data);
       setWinner(data);
       
+      // Si c'est un match de tournoi, rediriger automatiquement après 3 secondes
       if (tournamentId) {
         setTimeout(() => {
-          console.log(' Redirecting to tournament page...');
+          console.log('🎪 Redirecting to tournament page...');
           router.push(`/pong/1vs1-online/tournament?tournamentId=${tournamentId}`);
         }, 3000);
       }
     };
 
     const handleTournamentCancelled = (data: { tournamentId: string; reason: string }) => {
-      console.log(' Tournament cancelled:', data);
+      console.log('🚫 Tournament cancelled:', data);
       alert(`Tournoi annulé: ${data.reason}`);
       router.push('/pong');
     };
 
     const handleTournamentEnded = (data: any) => {
-      console.log(' Tournament ended:', data);
+      console.log('🏆 Tournament ended:', data);
+      // Rediriger vers home après 5 secondes
       setTimeout(() => {
-        console.log(' Redirecting to home page...');
+        console.log('🏠 Redirecting to home page...');
         router.push('/pong');
       }, 5000);
     };
@@ -160,6 +164,7 @@ const PongGame = () => {
     };
   }, [gameData.client, roomId, tournamentId, router]);
 
+  // Gestion des touches du clavier
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -184,6 +189,7 @@ const PongGame = () => {
     };
   }, []);
 
+  // Envoyer les commandes de mouvement au serveur
   useEffect(() => {
     if (!gameData.client || !roomId) return;
 
@@ -198,6 +204,7 @@ const PongGame = () => {
     return () => clearInterval(interval);
   }, [gameData.client, roomId]);
 
+  // Dessiner le jeu sur le canvas
   useEffect(() => {
     if (!canvasRef.current || !gameState) return;
 
@@ -205,12 +212,15 @@ const PongGame = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Animation frame pour mettre à jour à 60 FPS (environ toutes les 16ms)
     let animationFrameId: number;
 
     const draw = () => {
+      // Nettoyer le canvas
       ctx.fillStyle = '#16213e';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      // Ligne centrale
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.lineWidth = 2;
       ctx.setLineDash([10, 10]);
@@ -220,17 +230,21 @@ const PongGame = () => {
       ctx.stroke();
       ctx.setLineDash([]);
 
+      // Dessiner la raquette du joueur 1
       ctx.fillStyle = gameState.player1.color;
       ctx.fillRect(10, gameState.player1.y, 10, 100);
 
+      // Dessiner la raquette du joueur 2
       ctx.fillStyle = gameState.player2.color;
       ctx.fillRect(canvas.width - 20, gameState.player2.y, 10, 100);
 
+      // Dessiner la balle
       ctx.fillStyle = '#f72585';
       ctx.beginPath();
       ctx.arc(gameState.ball.x, gameState.ball.y, gameState.ball.radius, 0, Math.PI * 2);
       ctx.fill();
 
+      // Continuer l'animation
       animationFrameId = requestAnimationFrame(draw);
     };
 
@@ -295,7 +309,7 @@ const PongGame = () => {
       {winner && (
         <div style={styles.winnerScreen}>
           <h2 style={styles.winnerText}>
-             {winner.winnerNickname} a gagné ! 
+            🏆 {winner.winnerNickname} a gagné ! 🏆
           </h2>
           <p style={{ fontSize: '1.5rem', marginBottom: '10px' }}>
             Score final: {winner.finalScore.player1} - {winner.finalScore.player2}

@@ -14,8 +14,8 @@ export interface TournamentMatch {
   player2: TournamentPlayer | null;
   winner: TournamentPlayer | null;
   status: 'pending' | 'in_progress' | 'completed';
-  round: number; 
-  matchIndex: number; 
+  round: number; // 0 = demi-finales, 1 = finale, etc.
+  matchIndex: number; // Index du match dans le round
 }
 
 export interface Tournament {
@@ -28,5 +28,5 @@ export interface Tournament {
   status: 'waiting' | 'in_progress' | 'completed';
   winner: TournamentPlayer | null;
   createdAt: Date;
-  spectators: TournamentPlayer[]; 
+  spectators: TournamentPlayer[]; // Joueurs qui ne jouent pas le match en cours
 }

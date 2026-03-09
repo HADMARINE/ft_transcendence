@@ -23,6 +23,7 @@ const TournamentPage = () => {
   const [scores, setScores] = useState<{[key: number]: [number, number]}>({});
   const [tournamentWinner, setTournamentWinner] = useState<number | null>(null);
   
+  // Nouvelles couleurs basées sur la page de configuration
   const primaryColor = '#00ccff';
   const secondaryColor = '#ff6600';
   const accentColor = '#ffcc00';
@@ -45,7 +46,7 @@ const TournamentPage = () => {
         { id: 2, round: 'demi', player1Id: 3, player2Id: 4, winnerId: null, score: null },
         { id: 3, round: 'finale', player1Id: null, player2Id: null, winnerId: null, score: null }
       ];
-    } else { 
+    } else { // 8 joueurs
       initialMatches = [
         { id: 1, round: 'quart', player1Id: 1, player2Id: 2, winnerId: null, score: null },
         { id: 2, round: 'quart', player1Id: 3, player2Id: 4, winnerId: null, score: null },

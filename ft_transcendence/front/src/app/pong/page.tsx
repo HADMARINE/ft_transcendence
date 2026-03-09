@@ -240,18 +240,21 @@ export default function PongModesPage() {
     }
   }, [gameData.status]);
 
+  // Écouter lobby-created pour rediriger vers le lobby
   useEffect(() => {
     if (!gameData.client) return;
 
     const handleLobbyCreated = (data: { roomId: string; gametype: string; players: any[]; timeRemaining: number }) => {
       console.log("=== LOBBY CREATED ===", data);
       setShowQueueModal(false);
+      // Stocker les données du lobby dans sessionStorage
       sessionStorage.setItem('lobbyData', JSON.stringify(data));
       router.push(`/pong/1vs1-online/lobby?roomId=${data.roomId}`);
     };
 
     const handleLobbyUpdated = (data: { roomId: string; players: any[]; timeRemaining: number }) => {
       console.log("=== LOBBY UPDATED ===", data);
+      // Si on est toujours sur cette page, rediriger vers le lobby
       if (showQueueModal) {
         setShowQueueModal(false);
         sessionStorage.setItem('lobbyData', JSON.stringify(data));
@@ -268,6 +271,7 @@ export default function PongModesPage() {
     };
   }, [gameData.client, router, showQueueModal]);
 
+  // Écouter lobby-update pour le compteur de joueurs dans la queue
   useEffect(() => {
     if (!gameData.client || !showQueueModal) return;
 
@@ -316,7 +320,7 @@ export default function PongModesPage() {
 
   const handleModeClick = async (mode: any) => {
     if (mode.isOnline) {
-      console.log(" 1vs1 Online clicked - starting queue registration");
+      console.log("🎮 1vs1 Online clicked - starting queue registration");
       console.log("  gameData.client:", gameData.client);
       console.log("  gameData.client?.connected:", gameData.client?.connected);
       
@@ -349,7 +353,7 @@ export default function PongModesPage() {
           e.currentTarget.style.transform = 'translateY(0)';
         }}
       >
-         Accueil
+        🏠 Accueil
       </button>
       
       <h1 style={styles.title as React.CSSProperties}>Modes de Jeu Pong</h1>
@@ -381,7 +385,7 @@ export default function PongModesPage() {
         ))}
       </div>
 
-      {}
+      {/* Balles animées en arrière-plan */}
       {balls.map((ball) => (
         <div
           key={ball.id}
@@ -407,7 +411,7 @@ export default function PongModesPage() {
         />
       ))}
 
-      {}
+      {/* Queue Modal */}
       {showQueueModal && (
         <div style={styles.popupOverlay as React.CSSProperties}>
           <div style={styles.popupContent as React.CSSProperties}>
@@ -415,7 +419,7 @@ export default function PongModesPage() {
               En File d'Attente
             </h2>
             <div style={styles.loadingContainer as React.CSSProperties}>
-              {}
+              {/* Roue qui tourne améliorée */}
               <div className="spinner-container">
                 <div className="spinner-wheel"></div>
               </div>
@@ -512,7 +516,7 @@ export default function PongModesPage() {
         }
 
         .spinner-wheel::after {
-          content: '';
+          content: '🎮';
           position: absolute;
           top: 50%;
           left: 50%;

@@ -15,13 +15,13 @@
     "assets": [
       {
         "include": "i18n/**/*",
-        "watchAssets": true,
-        "outDir": "dist/src"
+        "outDir": "dist",
+        "watchAssets": true
       },
       {
         "include": "../public/**/*",
         "watchAssets": true,
-        "outDir": "dist/public"
+        "outDir": "dist"
       }
     ]
   }

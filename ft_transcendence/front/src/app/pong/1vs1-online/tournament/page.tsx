@@ -259,6 +259,7 @@ export default function TournamentPage() {
   
   const tournamentId = searchParams.get("tournamentId");
 
+  // Récupérer l'utilisateur courant
   useEffect(() => {
     const userStr = localStorage.getItem('user');
     if (userStr) {
@@ -271,6 +272,7 @@ export default function TournamentPage() {
     }
   }, []);
 
+  // Charger les données du tournoi depuis sessionStorage
   useEffect(() => {
     const tournamentDataStr = sessionStorage.getItem('tournamentData');
     if (tournamentDataStr) {
@@ -285,18 +287,19 @@ export default function TournamentPage() {
     }
   }, []);
 
+  // Écouter les événements du tournoi - registré UNE SEULE FOIS
   useEffect(() => {
     if (!gameData.client) {
-      console.log(" No gameData.client");
+      console.log("❌ No gameData.client");
       return;
     }
 
-    console.log(` Tournament page socket: ${gameData.client.id}, connected: ${gameData.client.connected}, tournamentId: ${tournamentId}`);
+    console.log(`✅ Tournament page socket: ${gameData.client.id}, connected: ${gameData.client.connected}, tournamentId: ${tournamentId}`);
 
-    console.log(" Tournament page useEffect: Registering socket listeners. Current tournamentId from URL:", tournamentId);
+    console.log("🎯 Tournament page useEffect: Registering socket listeners. Current tournamentId from URL:", tournamentId);
 
     const onTournamentBracket = (data: TournamentState) => {
-      console.log(" Tournament bracket received:", data);
+      console.log("🎯 Tournament bracket received:", data);
       setTournament(data);
     };
 
@@ -348,7 +351,7 @@ export default function TournamentPage() {
     };
 
     const onTournamentEnded = (data: { tournamentId: string; winner: any; finalRanking: any[] }) => {
-      console.log(" Tournament ended:", data);
+      console.log("🏆 Tournament ended:", data);
       setTournament(prev => {
         if (!prev) return prev;
         return {
@@ -358,22 +361,24 @@ export default function TournamentPage() {
         };
       });
 
+      // Rediriger vers la page home après 5 secondes (temps de voir le gagnant)
       setTimeout(() => {
-        console.log(" Redirecting to home page...");
+        console.log("🏠 Redirecting to home page...");
         router.push('/pong');
       }, 5000);
     };
 
     const onTournamentCancelled = (data: { tournamentId: string; reason: string }) => {
-      console.log(" Tournament cancelled:", data);
+      console.log("🚫 Tournament cancelled:", data);
       alert(`Tournoi annulé: ${data.reason}`);
       router.push('/pong');
     };
 
     const onSpectatorMode = (data: { roomId: string; tournamentId: string; matchId: string; player1: TournamentPlayer; player2: TournamentPlayer }) => {
-      console.log("️ Spectator mode - redirecting to spectator page:", data);
+      console.log("👁️ Spectator mode - redirecting to spectator page:", data);
       setIsSpectator(true);
       
+      // Vérifier si c'est notre tournoi (utiliser le state si l'URL n'a pas le param)
       const currentTournamentId = tournamentId || tournament?.tournamentId || tournament?.id;
       if (data.tournamentId === currentTournamentId) {
         router.push(`/pong/1vs1-online/spectator?roomId=${data.roomId}&tournamentId=${data.tournamentId}&matchId=${data.matchId}`);
@@ -381,25 +386,27 @@ export default function TournamentPage() {
     };
 
     const onMatchConfig = (data: { roomId: string; tournamentId: string; matchId: string; player1: TournamentPlayer; player2: TournamentPlayer }) => {
-      console.log(" MATCH CONFIG EVENT:", data);
+      console.log("🎮 MATCH CONFIG EVENT:", data);
       console.log("  tournamentId from URL:", tournamentId);
       console.log("  tournamentId from state:", tournament?.tournamentId || tournament?.id);
 
+      // Vérifier si c'est notre tournoi (utiliser le state si l'URL n'a pas le param)
       const currentTournamentId = tournamentId || tournament?.tournamentId || tournament?.id;
       const isMyTournament = data.tournamentId === currentTournamentId;
       
       if (!isMyTournament) {
-        console.log("️ TournamentId mismatch, ignoring match-config");
+        console.log("⚠️ TournamentId mismatch, ignoring match-config");
         console.log(`  Expected: ${currentTournamentId}, Got: ${data.tournamentId}`);
         return;
       }
 
-      console.log(" NAVIGATING TO CONFIG PAGE");
+      console.log("🚀 NAVIGATING TO CONFIG PAGE");
       router.push(`/pong/1vs1-online/match-config?roomId=${data.roomId}&tournamentId=${data.tournamentId}&matchId=${data.matchId}&player1=${encodeURIComponent(data.player1.nickname)}&player2=${encodeURIComponent(data.player2.nickname)}`);
     };
 
     const onIngameComm = (data: { id: string; tournamentId?: string; status?: string }) => {
       console.log("Ingame comm received:", data);
+      // Rediriger vers le jeu (après la config)
       if (data.tournamentId && data.tournamentId === tournamentId) {
         router.push(`/pong/1vs1-online/game?roomId=${data.id}&tournamentId=${data.tournamentId}`);
       }
@@ -412,17 +419,18 @@ export default function TournamentPage() {
     gameData.client.on("tournament-ended", onTournamentEnded);
     gameData.client.on("tournament-cancelled", onTournamentCancelled);
     gameData.client.on("spectator-mode", onSpectatorMode);
-    gameData.client.on("match-config", onMatchConfig); 
+    gameData.client.on("match-config", onMatchConfig); // garde aussi le listener socket direct
     gameData.client.on("ingame-comm", onIngameComm);
 
+    // Écouter match-config via custom event au lieu de socket event
     const handleMatchConfigEvent = (event: Event) => {
       const customEvent = event as CustomEvent;
-      console.log(" TOURNAMENT PAGE: Custom event 'match-config' received!", customEvent.detail);
+      console.log("🎮 TOURNAMENT PAGE: Custom event 'match-config' received!", customEvent.detail);
       onMatchConfig(customEvent.detail);
     };
     window.addEventListener('match-config', handleMatchConfigEvent);
 
-    console.log(" ALL LISTENERS REGISTERED on tournament page");
+    console.log("✅ ALL LISTENERS REGISTERED on tournament page");
 
     return () => {
       gameData.client?.off("tournament-bracket", onTournamentBracket);
@@ -486,21 +494,21 @@ export default function TournamentPage() {
         }
       `}</style>
 
-      <h1 style={styles.title}> Tournoi</h1>
+      <h1 style={styles.title}>🏆 Tournoi</h1>
       <p style={styles.subtitle}>
         {tournament.players.length} joueurs - {tournament.status === 'completed' ? 'Terminé' : 'En cours'}
       </p>
 
       {isSpectator && (
         <div style={styles.isSpectating}>
-          ️ Vous êtes en mode spectateur
+          👁️ Vous êtes en mode spectateur
         </div>
       )}
 
-      {}
+      {/* Match en cours */}
       {currentMatch && currentMatch.player1 && currentMatch.player2 && (
         <div style={styles.currentMatchBanner}>
-          <div style={styles.currentMatchText}>️ Match en cours</div>
+          <div style={styles.currentMatchText}>⚔️ Match en cours</div>
           <div style={styles.currentMatchPlayers}>
             {currentMatch.player1.nickname}
             {isCurrentUser(currentMatch.player1) && <span style={styles.youTag}>VOUS</span>}
@@ -511,10 +519,10 @@ export default function TournamentPage() {
         </div>
       )}
 
-      {}
+      {/* Gagnant du tournoi */}
       {tournament.winner && (
         <div style={styles.winnerBanner}>
-          <div style={styles.winnerTitle}> Vainqueur du tournoi!</div>
+          <div style={styles.winnerTitle}>🎉 Vainqueur du tournoi!</div>
           <div style={styles.winnerName}>
             {tournament.winner.nickname}
             {isCurrentUser(tournament.winner) && " (VOUS!)"}
@@ -523,7 +531,7 @@ export default function TournamentPage() {
       )}
 
       <div style={styles.mainContent}>
-        {}
+        {/* Bracket du tournoi */}
         <div style={styles.bracketContainer}>
           <h2 style={styles.bracketTitle}>Arbre du tournoi</h2>
           <div style={styles.bracketTree}>
@@ -547,7 +555,7 @@ export default function TournamentPage() {
                           ...(isCompleted ? styles.matchCardCompleted : {}),
                         }}
                       >
-                        {}
+                        {/* Player 1 */}
                         <div style={{
                           ...styles.matchPlayer,
                           ...(match.player1 
@@ -569,7 +577,7 @@ export default function TournamentPage() {
 
                         <div style={styles.matchVs}>VS</div>
 
-                        {}
+                        {/* Player 2 */}
                         <div style={{
                           ...styles.matchPlayer,
                           ...(match.player2 
@@ -596,16 +604,16 @@ export default function TournamentPage() {
           </div>
         </div>
 
-        {}
+        {/* Section spectateurs */}
         {tournament.spectators && tournament.spectators.length > 0 && (
           <div style={styles.spectatorSection}>
             <h3 style={styles.spectatorTitle}>
-              ️ Spectateurs ({tournament.spectators.length})
+              👁️ Spectateurs ({tournament.spectators.length})
             </h3>
             <div style={styles.spectatorList}>
               {tournament.spectators.map(spectator => (
                 <div key={spectator.id} style={styles.spectatorItem}>
-                  <span style={styles.spectatorIcon}></span>
+                  <span style={styles.spectatorIcon}>👤</span>
                   <span>
                     {spectator.nickname}
                     {isCurrentUser(spectator) && <span style={styles.youTag}>VOUS</span>}

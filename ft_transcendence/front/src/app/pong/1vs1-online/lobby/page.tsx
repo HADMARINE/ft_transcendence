@@ -186,6 +186,7 @@ export default function LobbyPage() {
   const [tournamentFormat, setTournamentFormat] = useState<string>("DUEL");
   const maxPlayers = 4;
 
+  // Charger les données initiales du lobby depuis sessionStorage
   useEffect(() => {
     const lobbyDataStr = sessionStorage.getItem('lobbyData');
     if (lobbyDataStr) {
@@ -208,7 +209,7 @@ export default function LobbyPage() {
     }
   }, []);
 
-  
+  // Écouter les événements du lobby
   useEffect(() => {
     if (!gameData.client) return;
 
@@ -233,6 +234,7 @@ export default function LobbyPage() {
       console.log("Tournament starting:", data);
       setTournamentFormat(data.format);
       
+      // Stocker les données du tournoi pour la transition
       const tournamentData = {
         id: data.tournamentId,
         gametype: 'PONG',
@@ -245,6 +247,7 @@ export default function LobbyPage() {
       };
       sessionStorage.setItem('tournamentData', JSON.stringify(tournamentData));
       
+      // Rediriger vers la page du tournoi
       setTimeout(() => {
         router.push(`/pong/1vs1-online/tournament?tournamentId=${data.tournamentId}`);
       }, 1000);
@@ -252,6 +255,7 @@ export default function LobbyPage() {
 
     const onTournamentBracket = (data: { tournamentId: string; matches: Array<{ id: string; player1: PlayerInfo | null; player2: PlayerInfo | null; winner: PlayerInfo | null; status: string; round: number; matchIndex: number }> }) => {
       console.log("Tournament bracket received:", data);
+      // Stocker les données complètes et rediriger
       sessionStorage.setItem('tournamentData', JSON.stringify(data));
       router.push(`/pong/1vs1-online/tournament?tournamentId=${data.tournamentId}`);
     };
@@ -264,10 +268,12 @@ export default function LobbyPage() {
 
     const onPlayerDisconnected = (data: { disconnectedPlayer: { id: string; nickname: string }; remainingPlayers: number }) => {
       console.log("Player disconnected:", data);
+      // L'affichage sera mis à jour via lobby-updated
     };
 
     const onMatchConfig = (data: { roomId: string; gametype: string; player1: PlayerInfo; player2: PlayerInfo }) => {
-      console.log(" Match config received in lobby:", data);
+      console.log("🎮 Match config received in lobby:", data);
+      // Pour un duel 1v1, rediriger vers la page de configuration
       router.push(`/pong/1vs1-online/match-config?roomId=${data.roomId}&player1=${encodeURIComponent(data.player1.nickname)}&player2=${encodeURIComponent(data.player2.nickname)}`);
     };
 
@@ -292,6 +298,7 @@ export default function LobbyPage() {
     };
   }, [gameData.client, roomId, router]);
 
+  // Redirection si le jeu démarre
   useEffect(() => {
     if (gameData.status === IngameStatus.WAITING_FOR_PLAYERS || gameData.status === IngameStatus.IN_PROGRESS) {
       router.replace(`/pong/1vs1-online/game${roomId ? `?roomId=${roomId}` : ""}`);
@@ -379,6 +386,7 @@ export default function LobbyPage() {
       <p style={styles.subtitle}>Pong - Mode En Ligne</p>
 
       <div style={styles.lobbyContainer}>
+        {/* Timer Section */}
         <div style={styles.timerSection}>
           <div style={styles.timerLabel}>Le tournoi commence dans</div>
           <div style={{
@@ -395,16 +403,19 @@ export default function LobbyPage() {
           </div>
         </div>
 
+        {/* Format du tournoi */}
         <div style={styles.formatSection}>
           <div style={styles.formatTitle}>Format actuel: {formatInfo.format}</div>
           <div style={styles.formatDescription}>{formatInfo.description}</div>
         </div>
 
+        {/* Liste des joueurs */}
         <div style={styles.playersSection}>
           <h2 style={styles.playersTitle}>
             Joueurs ({players.length}/{maxPlayers})
           </h2>
           <div style={styles.playersGrid}>
+            {/* Afficher les joueurs présents */}
             {players.map((player, index) => (
               <div key={player.id} style={styles.playerCard}>
                 <div style={styles.avatar}>
@@ -417,6 +428,7 @@ export default function LobbyPage() {
               </div>
             ))}
             
+            {/* Afficher les emplacements vides */}
             {Array.from({ length: maxPlayers - players.length }).map((_, index) => (
               <div key={`empty-${index}`} style={{ ...styles.playerCard, ...styles.playerCardEmpty }}>
                 <div style={{ ...styles.avatar, ...styles.avatarEmpty }}>?</div>
@@ -426,6 +438,7 @@ export default function LobbyPage() {
           </div>
         </div>
 
+        {/* Message d'attente avec spinner */}
         <div style={{ textAlign: 'center', marginTop: '20px' }}>
           {players.length < 2 && <div className="lobby-spinner"></div>}
           <div style={styles.waitingText}>
@@ -435,8 +448,9 @@ export default function LobbyPage() {
           </div>
         </div>
 
+        {/* Info box */}
         <div style={styles.infoBox}>
-           Plus de joueurs peuvent rejoindre jusqu'à la fin du timer. 
+          💡 Plus de joueurs peuvent rejoindre jusqu'à la fin du timer. 
           Le format du tournoi s'adapte automatiquement au nombre de joueurs.
         </div>
 

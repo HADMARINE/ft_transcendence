@@ -152,6 +152,7 @@ const styles = {
 };
 
 export default function TournamentBracket({ matches, players, currentMatchId }: TournamentBracketProps) {
+  // Organiser les matchs par rounds
   const rounds: TournamentMatch[][] = [];
   const maxRound = Math.max(...matches.map(m => m.round));
   
@@ -166,11 +167,11 @@ export default function TournamentBracket({ matches, players, currentMatchId }: 
     const matchesInRound = rounds[roundIndex].length;
     
     if (roundIndex === totalRounds - 1) {
-      return " Finale";
+      return "🏆 Finale";
     } else if (roundIndex === totalRounds - 2) {
-      return "️ Demi-finales";
+      return "⚔️ Demi-finales";
     } else if (matchesInRound === 4) {
-      return " Quarts de finale";
+      return "🎮 Quarts de finale";
     } else {
       return `Round ${roundIndex + 1}`;
     }
@@ -224,9 +225,9 @@ export default function TournamentBracket({ matches, players, currentMatchId }: 
       case 'pending':
         return 'En attente';
       case 'in_progress':
-        return ' En cours';
+        return '⚡ En cours';
       case 'completed':
-        return ' Terminé';
+        return '✓ Terminé';
       default:
         return status;
     }
@@ -254,7 +255,7 @@ export default function TournamentBracket({ matches, players, currentMatchId }: 
                     {match.player1?.nickname || "En attente"}
                   </span>
                   {match.winner?.id === match.player1?.id && (
-                    <span style={styles.winnerIcon as React.CSSProperties}></span>
+                    <span style={styles.winnerIcon as React.CSSProperties}>🏆</span>
                   )}
                 </div>
 
@@ -265,7 +266,7 @@ export default function TournamentBracket({ matches, players, currentMatchId }: 
                     {match.player2?.nickname || "En attente"}
                   </span>
                   {match.winner?.id === match.player2?.id && (
-                    <span style={styles.winnerIcon as React.CSSProperties}></span>
+                    <span style={styles.winnerIcon as React.CSSProperties}>🏆</span>
                   )}
                 </div>
 
