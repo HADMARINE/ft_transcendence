@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { login } from "@/api/auth";
@@ -118,7 +118,10 @@ const LoginPage = (props: { redirect?: string }) => {
   const router = useRouter();
   const isAuth = useIsAuth();
 
-  const { balls, keyframes } = useMemo(() => {
+const [balls, setBalls] = useState<Array<{id: number, x: number, y: number, size: number, moveX: number, moveY: number, duration: number}>>([]);
+  const [keyframes, setKeyframes] = useState("");
+
+  useEffect(() => {
     const ballsData = Array.from({ length: 8 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
@@ -138,10 +141,8 @@ const LoginPage = (props: { redirect?: string }) => {
       `;
     });
 
-    return {
-      balls: ballsData,
-      keyframes: keyframesContent,
-    };
+    setBalls(ballsData);
+    setKeyframes(keyframesContent);
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {

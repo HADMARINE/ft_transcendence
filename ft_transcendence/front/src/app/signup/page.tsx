@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { register } from "@/api/auth";
@@ -127,7 +127,10 @@ const SignupPage = () => {
 
   const isAuth = useIsAuth();
 
-  const { balls, keyframes } = useMemo(() => {
+const [balls, setBalls] = useState<Array<{id: number, x: number, y: number, size: number, color: string, moveX: number, moveY: number, duration: number}>>([]);
+  const [keyframes, setKeyframes] = useState("");
+
+  useEffect(() => {
     const ballsData = Array.from({ length: 10 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
@@ -149,10 +152,8 @@ const SignupPage = () => {
       `;
     });
 
-    return {
-      balls: ballsData,
-      keyframes: keyframesContent,
-    };
+    setBalls(ballsData);
+    setKeyframes(keyframesContent);
   }, []);
 
   const handleSignup = async (e: React.FormEvent) => {

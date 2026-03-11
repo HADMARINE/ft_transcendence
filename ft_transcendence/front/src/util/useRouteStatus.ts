@@ -12,10 +12,20 @@ import { useGameData } from "./useGameData";
  */
 export function useRouteStatus() {
   const pathname = usePathname();
-  const { client } = useGameData();
+  const { client, isConnected } = useGameData();
   const lastStatusRef = useRef<'online' | 'in_game' | null>(null);
 
   useEffect(() => {
+    // Only update status when authenticated:
+    // - isConnected means the websocket is live (server verified auth in handleConnection)
+    // - A token must exist in localStorage to have a valid session
+    if (!isConnected) {
+      return;
+    }
+    if (typeof window !== 'undefined' && !localStorage.getItem('token')) {
+      return;
+    }
+
     // Check if we're on a game page
     const isGamePage = pathname.includes("pong") || pathname.includes("shoot");
     const targetStatus: 'offline' | 'online' | 'in_game' = isGamePage ? "in_game" : "online";
@@ -42,5 +52,5 @@ export function useRouteStatus() {
     };
 
     updateStatus();
-  }, [pathname, client]);
+  }, [pathname, client, isConnected]);
 }

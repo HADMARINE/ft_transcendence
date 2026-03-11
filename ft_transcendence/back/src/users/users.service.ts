@@ -6,6 +6,7 @@ import { User } from './user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AuthService } from 'src/auth/auth.service';
 import { DataNotFoundException } from 'src/errors/exceptions/data-not-found.exception';
+import { DataAlreadyExistsException } from 'src/errors/exceptions/data-already-exists.exception';
 import { FindAllUsersDto } from './dto/find-all-users.dto';
 import { UtilsService } from 'src/utils/utils.service';
 import { AuthorityEnum } from './enums/authority.enum';
@@ -37,6 +38,12 @@ export class UsersService {
       await this.usersRepository.save(user);
     } catch (err) {
       this.logger.debug(err);
+      if (err?.code === 'SQLITE_CONSTRAINT' && err?.message?.includes('user.nickname')) {
+        throw new DataAlreadyExistsException({ name: 'nickname' });
+      }
+      if (err?.code === 'SQLITE_CONSTRAINT' && err?.message?.includes('user.email')) {
+        throw new DataAlreadyExistsException({ name: 'email' });
+      }
       throw err;
     }
   }

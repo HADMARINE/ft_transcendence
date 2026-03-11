@@ -16,43 +16,30 @@ import helmet from '@fastify/helmet';
 async function bootstrap() {
   const logger = new Logger('Main');
 
-  // Configuration HTTPS pour le développement
+  // HTTPS only in production - HTTP in development for simpler local setup
   let httpsOptions: { key: Buffer; cert: Buffer } | undefined = undefined;
-  try {
-    // Essayer différents chemins possibles pour les certificats
-    const possiblePaths = [
-      join(__dirname, '..', '..', 'certs'),           // /workspace/back/dist/../.. = /workspace
-      join(__dirname, '..', '..', '..', 'certs'),     // Pour la racine du projet
-      '/workspace/certs',                              // Chemin absolu Docker
-      '/workspace/ft_transcendence/certs',            // Autre possibilité Docker
-    ];
-    
-    let certsPath: string | null = null;
-    for (const path of possiblePaths) {
-      try {
-        if (existsSync(join(path, 'localhost.key'))) {
-          certsPath = path;
-          break;
-        }
-      } catch (e) {
-        // Ignore et continue
+  if (process.env.NODE_ENV === 'production') {
+    try {
+      const possiblePaths = [
+        join(__dirname, '..', '..', 'certs'),
+        join(__dirname, '..', '..', '..', 'certs'),
+        '/workspace/certs',
+      ];
+      let certsPath: string | null = null;
+      for (const p of possiblePaths) {
+        if (existsSync(join(p, 'localhost.key'))) { certsPath = p; break; }
       }
+      if (!certsPath) throw new Error('Certs not found');
+      httpsOptions = {
+        key: readFileSync(join(certsPath, 'localhost.key')),
+        cert: readFileSync(join(certsPath, 'localhost.crt')),
+      };
+      logger.log(`HTTPS enabled from: ${certsPath}`);
+    } catch (error) {
+      logger.warn('HTTPS certs not found, falling back to HTTP');
     }
-    
-    if (!certsPath) {
-      throw new Error('Certificats non trouvés dans les chemins possibles');
-    }
-    
-    httpsOptions = {
-      key: readFileSync(join(certsPath, 'localhost.key')),
-      cert: readFileSync(join(certsPath, 'localhost.crt')),
-    };
-    logger.log(`HTTPS activé avec certificats depuis: ${certsPath}`);
-  } catch (error) {
-    logger.warn(`Certificats HTTPS non trouvés, serveur en HTTP`);
-    if (error instanceof Error) {
-      logger.debug(`Détails: ${error.message}`);
-    }
+  } else {
+    logger.log('Development mode: running on HTTP');
   }
 
   const app = await NestFactory.create<NestFastifyApplication>(

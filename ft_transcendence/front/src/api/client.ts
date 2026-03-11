@@ -4,7 +4,6 @@ import axios, {
   AxiosRequestConfig,
   AxiosResponse,
 } from "axios";
-import { setupCache } from "axios-cache-interceptor";
 
 type ResponseResult<T, U extends boolean = boolean> =
   | {
@@ -19,25 +18,9 @@ type ResponseResult<T, U extends boolean = boolean> =
     };
 
 function customClient() {
-  // Agent HTTPS pour accepter les certificats auto-signés en développement (SSR seulement)
-  const isServer = typeof window === 'undefined';
-  let httpsAgent;
-  
-  if (isServer && process.env.NODE_ENV !== 'production') {
-    try {
-      const https = require('https');
-      httpsAgent = new https.Agent({
-        rejectUnauthorized: false,
-      });
-    } catch (e) {
-      console.warn('Could not create HTTPS agent:', e);
-    }
-  }
-
   const baseClient = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URI,
+    baseURL: process.env.NEXT_PUBLIC_API_URI || '',
     withCredentials: true,
-    ...(httpsAgent && { httpsAgent }),
   });
 
   async function resolver<T>(
@@ -58,7 +41,11 @@ function customClient() {
       }
 
       if (e.response) {
-        console.error('API Error Response:', e.response.status, e.response.data);
+        if (e.response.status >= 500) {
+          console.error('API Error Response:', e.response.status, e.response.data);
+        } else {
+          console.warn('API Error Response:', e.response.status, e.response.data);
+        }
         return {
           result: false,
           data: e.response?.data || {},
