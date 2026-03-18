@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 
 ENV TIMEZONE=GMT
-ENV USERNAME=devuser
+ENV USERNAME=root
 
 LABEL maintainer="HADMARINE <contact@hadmarine.com>"
 
@@ -11,37 +11,37 @@ SHELL ["/bin/bash", "-c"]
 
 RUN ln -snf /usr/share/zoneinfo/${TIMEZONE} /etc/localtime && echo ${TIMEZONE} > /etc/timezone
 RUN apt -y update
-RUN apt -y install build-essential curl gnupg git zsh nano language-pack-en sudo lsb-release ca-certificates
+RUN apt -y install build-essential curl gnupg git zsh nano language-pack-en lsb-release ca-certificates
 RUN mkdir -p /etc/apt/keyrings
 
 RUN update-locale
-RUN adduser --shell /bin/zsh --disabled-password --gecos "" ${USERNAME}
-RUN chmod 777 -R /home/${USERNAME}
-RUN adduser ${USERNAME} sudo
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+
+
+
 
 RUN chsh -s ~/.zshrc
 
-USER ${USERNAME}
-WORKDIR /home/${USERNAME}
+
+WORKDIR /root
 
 
-RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 RUN echo \
     "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-    $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-RUN sudo apt update
-RUN sudo apt -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+RUN apt update
+RUN apt -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
     # && source ~/.bashrc \
 
 
-RUN sudo curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash \
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash \
     && source ~/.profile \
     && nvm install 20 \
-    && sudo chown -R ${USERNAME}:${USERNAME} /home/${USERNAME} \
-    && sudo chmod 777 -R /home/${USERNAME} \
-    # && sudo chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.nvm \
-    # && sudo chown -R ${USERNAME}:${USERNAME} /workspaces/tran/ft_transcendence \
+    && chown -R ${USERNAME}:${USERNAME} /root \
+    && chmod 777 -R /root \
+    # && chown -R ${USERNAME}:${USERNAME} /root/.nvm \
+    # && chown -R ${USERNAME}:${USERNAME} /workspaces/tran/ft_transcendence \
     && npm i -g yarn 
 
 

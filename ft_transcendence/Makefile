@@ -2,7 +2,7 @@ IMAGE_NAME := devenv-ubuntu
 CONTAINER_NAME := devenv-container
 DOCKERFILE := devenv.dockerfile
 PROJECT_DIR := $(shell pwd)
-USER := devuser
+USER := root
 
 
 .PHONY: help build start stop restart shell logs clean rebuild attach status
