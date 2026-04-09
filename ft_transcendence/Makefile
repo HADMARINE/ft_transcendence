@@ -26,7 +26,9 @@ start:
 		docker run -d \
 			--name $(CONTAINER_NAME) \
 			--userns=host \
-			--network=host \
+			--network=bridge \
+			-p 3000:3000 \
+			-p 61001:61001 \
 			--privileged \
 			-v /var/run/docker.sock:/var/run/docker.sock \
 			-v $(PROJECT_DIR):/workspace \

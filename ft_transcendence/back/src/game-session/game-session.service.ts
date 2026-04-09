@@ -245,6 +245,11 @@ export class GameSessionService {
   }
 
   async registerQueue(client: Socket, registerQueueDto: RegisterQueueDto) {
+    let retries = 0;
+    while (!client.handshake.auth.user && retries < 20) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      retries++;
+    }
     const user = client.handshake.auth.user as User;
 
     if (!user) {
@@ -346,7 +351,15 @@ export class GameSessionService {
   }
 
   async unregisterQueue(client: Socket) {
+    let retries = 0;
+    while (!client.handshake.auth.user && retries < 20) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      retries++;
+    }
     const user = client.handshake.auth.user as User;
+    
+    if (!user) return;
+
     // Try to remove from the existing queue first
     const queueIdx = this.userQueue.findIndex(
       (uq) => uq.user.id === user.id,

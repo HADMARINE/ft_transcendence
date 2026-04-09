@@ -184,9 +184,11 @@ const [balls, setBalls] = useState<Array<{id: number, x: number, y: number, size
     setError("");
   }, [email, password]);
 
-  if (isAuth === true) {
-    router.replace("/home");
-  }
+  useEffect(() => {
+    if (isAuth === true) {
+      router.replace(props.redirect || "/home");
+    }
+  }, [isAuth, router, props.redirect]);
 
   return (
     <div style={styles.container}>

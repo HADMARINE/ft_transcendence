@@ -27,6 +27,15 @@ function customClient() {
     config: Parameters<typeof baseClient.request<T>>[0]
   ): Promise<ResponseResult<T>> {
     try {
+      if (typeof window !== "undefined") {
+        const token = localStorage.getItem("token");
+        if (token) {
+          config.headers = {
+            ...config.headers,
+            Authorization: `Bearer ${token}`
+          };
+        }
+      }
       console.log('API Request:', config.method?.toUpperCase(), config.url, config.data);
       const res = await baseClient.request(config);
       console.log('API Response:', res.status, res.data);

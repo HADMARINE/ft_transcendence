@@ -16,35 +16,32 @@ import helmet from '@fastify/helmet';
 async function bootstrap() {
   const logger = new Logger('Main');
 
-  // HTTPS only in production - HTTP in development for simpler local setup
-  let httpsOptions: { key: Buffer; cert: Buffer } | undefined = undefined;
-  if (process.env.NODE_ENV === 'production') {
-    try {
-      const possiblePaths = [
-        join(__dirname, '..', '..', 'certs'),
-        join(__dirname, '..', '..', '..', 'certs'),
-        '/workspace/certs',
-      ];
-      let certsPath: string | null = null;
-      for (const p of possiblePaths) {
-        if (existsSync(join(p, 'localhost.key'))) { certsPath = p; break; }
-      }
-      if (!certsPath) throw new Error('Certs not found');
-      httpsOptions = {
-        key: readFileSync(join(certsPath, 'localhost.key')),
-        cert: readFileSync(join(certsPath, 'localhost.crt')),
-      };
-      logger.log(`HTTPS enabled from: ${certsPath}`);
-    } catch (error) {
-      logger.warn('HTTPS certs not found, falling back to HTTP');
+  // Required HTTPS setup
+  let httpsOptions: { key: Buffer; cert: Buffer };
+  try {
+    const possiblePaths = [
+      join(__dirname, '..', '..', 'certs'),
+      join(__dirname, '..', '..', '..', 'certs'),
+      '/workspace/certs',
+    ];
+    let certsPath: string | null = null;
+    for (const p of possiblePaths) {
+      if (existsSync(join(p, 'localhost.key'))) { certsPath = p; break; }
     }
-  } else {
-    logger.log('Development mode: running on HTTP');
+    if (!certsPath) throw new Error('Certs not found');
+    httpsOptions = {
+      key: readFileSync(join(certsPath, 'localhost.key')),
+      cert: readFileSync(join(certsPath, 'localhost.crt')),
+    };
+    logger.log(`HTTPS enabled from: ${certsPath}`);
+  } catch (error) {
+    logger.error('HTTPS certs not found! Cannot start server without certificates.');
+    process.exit(1);
   }
 
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter(httpsOptions ? { https: httpsOptions } : {}),
+    new FastifyAdapter({ https: httpsOptions }),
   );
 
   app.useStaticAssets({

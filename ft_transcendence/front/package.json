@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:https": "next dev --experimental-https --experimental-https-key ../certs/localhost.key --experimental-https-cert ../certs/localhost.crt",
+    "dev": "next dev -H 0.0.0.0",
+    "dev:https": "next dev -H 0.0.0.0 --experimental-https --experimental-https-key ../certs/localhost.key --experimental-https-cert ../certs/localhost.crt",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

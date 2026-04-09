@@ -36,6 +36,10 @@ export async function register(params: {
 
 export async function logout(): Promise<void> {
   await client.post("/auth/logout");
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("token");
+    window.dispatchEvent(new Event("token-sync"));
+  }
 }
 
 export async function authStatus(): Promise<boolean> {
