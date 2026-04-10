@@ -1,29 +1,26 @@
 #!/bin/bash
 
-
-set -e
+set -euo pipefail
 
 CERTS_DIR="$(dirname "$0")/certs"
 
-
-
 if [ ! -d "$CERTS_DIR" ]; then
     mkdir -p "$CERTS_DIR"
-    echo -e "Dossier certs créé${NC}"
+    echo "Dossier certs cree"
 fi
 
-if ! command -v openssl &> /dev/null; then
-    echo -e "Erreur: OpenSSL n'est pas installé sur ce système.${NC}"
-    echo -e "Installation recommandée:${NC}"
-    echo -e "  Ubuntu/Debian: sudo apt-get install openssl${NC}"
-    echo -e "  macOS: brew install openssl${NC}"
-    echo -e "  RHEL/CentOS: sudo yum install openssl${NC}"
+if ! command -v openssl >/dev/null 2>&1; then
+    echo "Erreur: OpenSSL n'est pas installe sur ce systeme."
+    echo "Installation recommandee:"
+    echo "  Ubuntu/Debian: sudo apt-get install openssl"
+    echo "  macOS: brew install openssl"
+    echo "  RHEL/CentOS: sudo yum install openssl"
     exit 1
 fi
 
-echo -e "OpenSSL trouvé, génération des certificats...${NC}"
+echo "OpenSSL trouve, generation des certificats..."
 
-cat > "$CERTS_DIR/openssl.conf" << EOF
+cat > "$CERTS_DIR/openssl.conf" <<'EOF'
 [req]
 default_bits = 2048
 prompt = no
@@ -60,33 +57,25 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -out "$CERT_PATH" \
     -config "$CERTS_DIR/openssl.conf"
 
-echo -e "\n$Certificats SSL générés avec succès!${NC}"
-echo -e "Clé privée: $KEY_PATH${NC}"
-echo -e "Certificat: $CERT_PATH${NC}"
-echo -e "\n Ces certificats sont auto-signés et destinés au développement uniquement.${NC}"
-echo -e "Vous devrez accepter l'avertissement de sécurité dans votre navigateur.${NC}"
-
-echo -e "\n=== Configuration HTTPS ===${NC}"
-echo -e "Les fichiers .env ont été mis à jour pour utiliser HTTPS.${NC}"
-echo -e "Utilisez les certificats générés dans le dossier 'certs' pour votre serveur.${NC}"
-
-echo -e "Pour Next.js, démarrez avec:${NC}"
-echo -e "  cd front${NC}"
-echo -e "  npm run dev:https${NC}"
-
-echo -e "Pour le backend, démarrez normalement:${NC}"
-echo -e "  cd back${NC}"
-echo -e "  }npm run start:dev${NC}"
-
-echo -e "Pour ajouter le certificat aux autorités de confiance:${NC}"
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo -e "  sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain $CERT_PATH${NC}"
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    echo -e "  sudo cp $CERT_PATH /usr/local/share/ca-certificates/localhost.crt${NC}"
-    echo -e "  sudo update-ca-certificates${NC}"
-fi
-
 chmod 600 "$KEY_PATH"
 chmod 644 "$CERT_PATH"
 
-echo -e " Configuration terminée!${NC}"
+echo
+echo "Certificats SSL generes avec succes"
+echo "Cle privee: $KEY_PATH"
+echo "Certificat: $CERT_PATH"
+echo
+echo "Ces certificats sont auto-signes et destines au developpement uniquement."
+echo "Vous devrez accepter l'avertissement de securite dans votre navigateur."
+echo
+echo "Pour Next.js: cd front && yarn dev"
+echo "Pour le backend: cd back && yarn start:dev"
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "Pour faire confiance au certificat (macOS):"
+    echo "  sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain $CERT_PATH"
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    echo "Pour faire confiance au certificat (Linux):"
+    echo "  sudo cp $CERT_PATH /usr/local/share/ca-certificates/localhost.crt"
+    echo "  sudo update-ca-certificates"
+fi

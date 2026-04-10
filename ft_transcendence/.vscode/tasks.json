@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dev Back (Docker)",
+      "type": "shell",
+      "command": "wsl docker exec -it -u root devenv-container bash -lc \"cd /workspace/back && yarn start:dev\"",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev-back"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev Front (Docker)",
+      "type": "shell",
+      "command": "wsl docker exec -it -u root devenv-container bash -lc \"cd /workspace/front && yarn dev\"",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev-front"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev Front + Back (Docker)",
+      "dependsOn": [
+        "Dev Back (Docker)",
+        "Dev Front (Docker)"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    }
+  ]
+}

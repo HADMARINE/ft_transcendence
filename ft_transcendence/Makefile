@@ -5,7 +5,9 @@ PROJECT_DIR := $(shell pwd)
 USER := root
 
 
-.PHONY: help build start stop restart shell logs clean rebuild attach status
+.PHONY: all help build start stop restart shell logs clean rebuild attach status
+
+all: build start shell
 
 build:
 	@echo " Construction de l'image Docker..."
@@ -54,8 +56,19 @@ shell:
 		echo " Le conteneur n'est pas démarré. Démarrage...$(NC)"; \
 		$(MAKE) start; \
 	fi
-	@echo "Ouverture du shell...$(NC)"
-	docker exec -it -u $(USER) $(CONTAINER_NAME) zsh
+	@echo "Génération des certificats...$(NC)"
+	docker exec -u $(USER) $(CONTAINER_NAME) bash -lc "cd /workspace && bash ./generate-certs.sh"
+	@echo "Mise à jour Yarn front...$(NC)"
+	docker exec -u $(USER) $(CONTAINER_NAME) bash -lc "cd /workspace/front && yarn up"
+	@echo "Mise à jour Yarn back...$(NC)"
+	docker exec -u $(USER) $(CONTAINER_NAME) bash -lc "cd /workspace/back && yarn up"
+	@echo "Arrêt des anciens serveurs de dev (si présents)...$(NC)"
+	docker exec -u $(USER) $(CONTAINER_NAME) bash -lc "pkill -f '/[w]orkspace/back' || true"
+	docker exec -u $(USER) $(CONTAINER_NAME) bash -lc "pkill -f '/[w]orkspace/front/node_modules/next/dist/bin/next dev' || true"
+	@echo "Démarrage du front HTTPS en arrière-plan (yarn dev:https)...$(NC)"
+	docker exec -d -u $(USER) $(CONTAINER_NAME) bash -lc "cd /workspace/front && yarn dev:https"
+	@echo "Lancement du back dans ce terminal (yarn start:dev)...$(NC)"
+	docker exec -it -u $(USER) $(CONTAINER_NAME) bash -lc "cd /workspace/back && yarn start:dev"
 
 attach:
 	@if [ ! "$$(docker ps -q -f name=$(CONTAINER_NAME))" ]; then \
