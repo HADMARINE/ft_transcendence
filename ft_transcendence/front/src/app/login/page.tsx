@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { login } from "@/api/auth";
 import { updateUserStatus } from "@/api/users";
+import { LegalLinks } from "@/components/LegalLinks";
 import { useIsAuth } from "@/util/useIsAuth";
 import { TOKEN_SYNC_EVENT } from "@/util/useGameData";
 
@@ -83,6 +84,16 @@ const styles = {
     marginTop: "20px",
     textAlign: "center",
     color: "#a9a9a9",
+  },
+  legalBlock: {
+    marginTop: "24px",
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "center",
+    gap: "10px",
+    color: "#a9a9a9",
+    fontSize: "0.95rem",
+    zIndex: 2,
   },
   signupLink: {
     color: "#f72585",
@@ -230,6 +241,11 @@ const [balls, setBalls] = useState<Array<{id: number, x: number, y: number, size
           </Link>
         </div>
       </form>
+
+      <div style={styles.legalBlock}>
+        <span>Informations légales</span>
+        <LegalLinks />
+      </div>
 
       {balls.map((ball) => (
         <div

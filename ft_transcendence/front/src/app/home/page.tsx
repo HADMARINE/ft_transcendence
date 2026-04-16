@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useIsAuth } from "@/util/useIsAuth";
+import { LegalLinks } from "@/components/LegalLinks";
 
 const styles = {
   container: {
@@ -77,19 +78,39 @@ const styles = {
     boxShadow: "0 0 15px rgba(247, 37, 133, 0.7)",
     zIndex: 1,
   },
+  legalBlock: {
+    marginTop: "32px",
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "center",
+    gap: "10px",
+    color: "#a9a9a9",
+    fontSize: "0.95rem",
+    zIndex: 2,
+  },
 };
 
 export default function HomePage() {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const auth = useIsAuth({ redirectToLogin: true, returnToCurrentPage: true });
+  const [balls, setBalls] = useState<Array<{
+    id: number;
+    x: number;
+    y: number;
+    size: number;
+    speedX: number;
+    speedY: number;
+    color: string;
+  }>>([]);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  const [balls] = useState(() => {
-    return Array.from({ length: 12 }, (_, i) => ({
+  useEffect(() => {
+    setBalls(
+      Array.from({ length: 12 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,
@@ -97,8 +118,9 @@ export default function HomePage() {
       speedX: (Math.random() - 0.5) * 0.8,
       speedY: (Math.random() - 0.5) * 0.8,
       color: i % 2 === 0 ? "#4cc9f0" : "#f72585",
-    }));
-  });
+      }))
+    );
+  }, []);
 
   if (!isMounted) {
     return (
@@ -180,6 +202,11 @@ export default function HomePage() {
         </div>
       </div>
 
+      <div style={styles.legalBlock}>
+        <span>Informations légales</span>
+        <LegalLinks />
+      </div>
+
       {/* Balles animées en arrière-plan */}
       {balls.map((ball) => (
         <div
@@ -203,51 +230,51 @@ export default function HomePage() {
       <style jsx global>{`
         @keyframes move0 {
           0% { transform: translate(0, 0); }
-          100% { transform: translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px); }
+          100% { transform: translate(60px, -50px); }
         }
         @keyframes move1 {
           0% { transform: translate(0, 0); }
-          100% { transform: translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px); }
+          100% { transform: translate(-80px, 40px); }
         }
         @keyframes move2 {
           0% { transform: translate(0, 0); }
-          100% { transform: translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px); }
+          100% { transform: translate(100px, 30px); }
         }
         @keyframes move3 {
           0% { transform: translate(0, 0); }
-          100% { transform: translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px); }
+          100% { transform: translate(-70px, -30px); }
         }
         @keyframes move4 {
           0% { transform: translate(0, 0); }
-          100% { transform: translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px); }
+          100% { transform: translate(80px, 20px); }
         }
         @keyframes move5 {
           0% { transform: translate(0, 0); }
-          100% { transform: translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px); }
+          100% { transform: translate(-40px, 90px); }
         }
         @keyframes move6 {
           0% { transform: translate(0, 0); }
-          100% { transform: translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px); }
+          100% { transform: translate(20px, -70px); }
         }
         @keyframes move7 {
           0% { transform: translate(0, 0); }
-          100% { transform: translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px); }
+          100% { transform: translate(-20px, 60px); }
         }
         @keyframes move8 {
           0% { transform: translate(0, 0); }
-          100% { transform: translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px); }
+          100% { transform: translate(50px, -40px); }
         }
         @keyframes move9 {
           0% { transform: translate(0, 0); }
-          100% { transform: translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px); }
+          100% { transform: translate(-90px, 10px); }
         }
         @keyframes move10 {
           0% { transform: translate(0, 0); }
-          100% { transform: translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px); }
+          100% { transform: translate(30px, 80px); }
         }
         @keyframes move11 {
           0% { transform: translate(0, 0); }
-          100% { transform: translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px); }
+          100% { transform: translate(-60px, -60px); }
         }
       `}</style>
     </div>
