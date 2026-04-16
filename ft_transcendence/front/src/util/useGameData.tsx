@@ -162,15 +162,17 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     console.log("Initializing socket connection with withCredentials...");
     setSocketInitialized(true);
 
-    const client = io(
-      process.env.NEXT_PUBLIC_SOCKET_URL || "https://localhost:4000",
-      {
-        autoConnect: true,
-        transports: ["websocket"],
-        withCredentials: true,
-        auth: token ? { Authorization: token } : {},
-      }
-    );
+    const socketUrl =
+      process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin;
+    const socketPath = process.env.NEXT_PUBLIC_SOCKET_PATH || "/socket.io";
+
+    const client = io(socketUrl, {
+      path: socketPath,
+      autoConnect: true,
+      transports: ["websocket"],
+      withCredentials: true,
+      auth: token ? { Authorization: token } : {},
+    });
 
     clientRef.current = client;
 
@@ -412,15 +414,16 @@ export const GameDataProvider: React.FC<{ children: React.ReactNode }> = ({
     // Client doesn't exist yet, initialize it now
     console.log("No client available, initializing socket...");
     const token = localStorage.getItem("token") || undefined;
-    const newClient = io(
-      process.env.NEXT_PUBLIC_SOCKET_URL || "https://localhost:4000",
-      {
-        autoConnect: true,
-        transports: ["websocket"],
-        withCredentials: true,
-        auth: token ? { Authorization: token } : {},
-      }
-    );
+    const socketUrl =
+      process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin;
+    const socketPath = process.env.NEXT_PUBLIC_SOCKET_PATH || "/socket.io";
+    const newClient = io(socketUrl, {
+      path: socketPath,
+      autoConnect: true,
+      transports: ["websocket"],
+      withCredentials: true,
+      auth: token ? { Authorization: token } : {},
+    });
     clientRef.current = newClient;
 
     // Ajouter les listeners essentiels sur le nouveau socket

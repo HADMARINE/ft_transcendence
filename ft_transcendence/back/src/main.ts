@@ -9,39 +9,15 @@ import { ParametersInvalidException } from './errors/exceptions/parameters-inval
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import packageInfo from '../package.json';
 import { join } from 'path';
-import { readFileSync, existsSync } from 'fs';
 import fastifyCookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 
 async function bootstrap() {
   const logger = new Logger('Main');
 
-  // Required HTTPS setup
-  let httpsOptions: { key: Buffer; cert: Buffer };
-  try {
-    const possiblePaths = [
-      join(__dirname, '..', '..', 'certs'),
-      join(__dirname, '..', '..', '..', 'certs'),
-      '/workspace/certs',
-    ];
-    let certsPath: string | null = null;
-    for (const p of possiblePaths) {
-      if (existsSync(join(p, 'localhost.key'))) { certsPath = p; break; }
-    }
-    if (!certsPath) throw new Error('Certs not found');
-    httpsOptions = {
-      key: readFileSync(join(certsPath, 'localhost.key')),
-      cert: readFileSync(join(certsPath, 'localhost.crt')),
-    };
-    logger.log(`HTTPS enabled from: ${certsPath}`);
-  } catch (error) {
-    logger.error('HTTPS certs not found! Cannot start server without certificates.');
-    process.exit(1);
-  }
-
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ https: httpsOptions }),
+    new FastifyAdapter(),
   );
 
   app.useStaticAssets({
